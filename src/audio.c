@@ -1,66 +1,48 @@
 #include "audio.h"
 #include "raylib.h"
+#include <stdlib.h> // Adicionado para uso de NULL
 
-// Variáveis globais para os sons e música (exemplo)
-// Sound fxShoot;
-// Sound fxEnemyHit;
-// Sound fxPlayerHit;
-// Sound fxLevelUp;
-// Sound fxGameOver;
-// Music musicBackground;
+// Implementações simplificadas para as funções de áudio
+// Estas funções são stubs que permitem a compilação sem áudio real
 
-void LoadAudioResources(void) {
-    InitAudioDevice(); // Inicializa o dispositivo de áudio
-
-    // Carregar efeitos sonoros - Exemplo: substitua "path/to/" pelos caminhos reais na pasta assets
-    // fxShoot = LoadSound("assets/audio/shoot.wav");
-    // fxEnemyHit = LoadSound("assets/audio/enemy_hit.wav");
-    // fxPlayerHit = LoadSound("assets/audio/player_hit.wav");
-    // fxLevelUp = LoadSound("assets/audio/level_up.wav");
-    // fxGameOver = LoadSound("assets/audio/game_over.wav");
-
-    // Carregar música de fundo - Exemplo:
-    // musicBackground = LoadMusicStream("assets/audio/background_music.ogg");
-    // PlayMusicStream(musicBackground);
-    // SetMusicVolume(musicBackground, 0.5f);
+void LoadGameAudio(Sound *shoot, Sound *enemyExplode, Sound *playerExplode, Music *bgMusic) {
+    // Inicializa o dispositivo de áudio se necessário
+    if (!IsAudioDeviceReady()) {
+        InitAudioDevice();
+    }
+    
+    // Como não temos arquivos de áudio ainda, apenas inicializamos com valores vazios
+    // Isso permite que o jogo compile e funcione sem áudio
+    *shoot = (Sound){0};
+    *enemyExplode = (Sound){0};
+    *playerExplode = (Sound){0};
+    *bgMusic = (Music){0};
 }
 
-void UnloadAudioResources(void) {
-    // Descarregar efeitos sonoros
-    // UnloadSound(fxShoot);
-    // UnloadSound(fxEnemyHit);
-    // UnloadSound(fxPlayerHit);
-    // UnloadSound(fxLevelUp);
-    // UnloadSound(fxGameOver);
-
-    // Descarregar música
-    // UnloadMusicStream(musicBackground);
-
-    CloseAudioDevice(); // Fecha o dispositivo de áudio
+void UnloadGameAudio(Sound shoot, Sound enemyExplode, Sound playerExplode, Music bgMusic) {
+    // Não faz nada por enquanto, já que não carregamos áudios reais
+    // Quando tivermos áudios reais, descomente as linhas abaixo
+    
+    /*
+    UnloadSound(shoot);
+    UnloadSound(enemyExplode);
+    UnloadSound(playerExplode);
+    UnloadMusicStream(bgMusic);
+    */
 }
 
-void PlaySoundEffect(Sound fx) {
-    // Adicionar verificação se o áudio está inicializado, se necessário
-    // if (IsAudioDeviceReady()) PlaySound(fx);
+void PlayGameSound(Sound sound) {
+    // Verifica se o dispositivo de áudio está pronto e se o som é válido
+    // Como não temos sons reais, esta função não faz nada por enquanto
+    if (IsAudioDeviceReady() && sound.frameCount > 0) {
+        PlaySound(sound);
+    }
 }
 
-void PlayBackgroundMusic(Music music) {
-    // if (IsAudioDeviceReady()) PlayMusicStream(music);
+void UpdateGameMusicStream(Music music) {
+    // Atualiza a música se estiver tocando
+    // Como não temos música real, esta função não faz nada por enquanto
+    if (IsAudioDeviceReady() && music.ctxData != NULL) {
+        UpdateMusicStream(music);
+    }
 }
-
-void UpdateMusicStreamLocal(Music music) {
-    // if (IsAudioDeviceReady()) UpdateMusicStream(music);
-}
-
-void StopBackgroundMusic(Music music) {
-    // if (IsAudioDeviceReady()) StopMusicStream(music);
-}
-
-void PauseBackgroundMusic(Music music) {
-    // if (IsAudioDeviceReady()) PauseMusicStream(music);
-}
-
-void ResumeBackgroundMusic(Music music) {
-    // if (IsAudioDeviceReady()) ResumeMusicStream(music);
-}
-

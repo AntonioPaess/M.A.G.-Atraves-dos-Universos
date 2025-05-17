@@ -1,0 +1,107 @@
+Prompt para IA:
+Fonte: https://sirmilkman.itch.io/o?ac=qfCyYFQF-yt
+Você é um especialista em desenvolvimento de jogos em C usando a biblioteca Raylib. Seu objetivo é transformar o projeto abaixo em um jogo o mais fiel possível ao jogo "O" do SirMilkman (link para referência), mantendo a estrutura modular e as boas práticas já presentes no código.
+
+Sobre o projeto atual:
+
+O projeto já possui um sistema de entidades modularizado (player, inimigos, projéteis, placar, renderização, áudio, etc).
+O código está todo em C, organizado em múltiplos arquivos dentro da pasta src.
+Usa Raylib para gráficos, input e áudio.
+O Makefile já está pronto para compilar no macOS e Linux.
+O loop principal, lógica de input, movimentação, colisão, ranking e HUD já existem.
+O player atualmente é um retângulo, atira na direção do mouse com o botão esquerdo, e os inimigos perseguem o jogador.
+Seu objetivo: Transforme este jogo para que fique o mais parecido possível com o jogo "O" do SirMilkman, mantendo a base em C e Raylib, e aproveitando ao máximo a estrutura já existente. Considere os seguintes pontos:
+
+Visual e Atmosfera:
+
+Recrie o visual minimalista e monocromático de "O".
+Use apenas círculos para player, inimigos e projéteis.
+Fundo preto, elementos brancos (ou tons de cinza), sem HUD poluído.
+Sem textos na tela durante o gameplay, apenas elementos gráficos.
+Use efeitos visuais simples (ex: fade, flashes, partículas minimalistas).
+Jogabilidade:
+
+O jogador é um círculo que se move suavemente pelo cenário.
+O player atira projéteis circulares na direção do mouse ao clicar.
+Os inimigos são círculos que perseguem o jogador, podem ter padrões de movimento variados (direto, zigue-zague, etc).
+O objetivo é sobreviver o máximo possível, com dificuldade crescente.
+Não há fases, apenas ondas infinitas de inimigos.
+O jogo termina ao ser atingido, mostrando apenas a pontuação final e um botão para recomeçar.
+Controles:
+
+Movimento do player: WASD ou setas.
+Mira e tiro: mouse (botão esquerdo).
+Reiniciar: tecla R ou clique após o game over.
+Áudio:
+
+Sons minimalistas para tiro, morte e spawn de inimigos.
+Música ambiente simples e repetitiva (se possível).
+Código:
+
+Mantenha a estrutura modular (player.c/h, enemy.c/h, bullet.c/h, render.c/h, game.c/h, etc).
+Remova sistemas desnecessários para o novo escopo (ex: ranking, nomes, fases, placar complexo).
+Simplifique o HUD: apenas a pontuação no topo, sem vidas ou níveis.
+Use funções da Raylib para desenhar círculos (DrawCircle, etc).
+Garanta que o código seja limpo, comentado e fácil de manter.
+Extras:
+
+O jogo deve rodar em 1600x1200, com opção de tela cheia (F11).
+O player e inimigos devem ter colisão circular precisa.
+O código deve ser portável entre Windows, macOS e Linux (mantendo o Makefile).
+Referência:
+Jogue e observe o máximo possível do jogo "O" do SirMilkman para captar a essência visual, sonora e de gameplay minimalista.
+
+IMPORTANTE:
+
+Não copie assets do jogo original, apenas recrie o estilo visual e jogabilidade.
+O resultado deve ser um jogo em C, usando Raylib, com código limpo e modular, pronto para compilar e rodar.
+Abaixo está a estrutura e exemplos do projeto atual para referência:
+
+Estrutura de pastas:
+Makefile
+src/
+  audio.c/h
+  bullet.c/h
+  enemy.c/h
+  game.c/h
+  input.c/h
+  main.c
+  player.c/h
+  render.c/h
+  scoreboard.c/h
+  utils.c/h
+
+  Exemplo de função principal:
+  int main(void) {
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "M.A.G. - O inimigo agora é outro!");
+    SetTargetFPS(TARGET_FPS);
+    Game game;
+    InitGame(&game);
+    while (!WindowShouldClose()) {
+        float deltaTime = GetFrameTime();
+        if (IsKeyPressed(KEY_F11)) AppToggleFullscreen();
+        UpdateGame(&game, deltaTime);
+        BeginDrawing();
+            ClearBackground(BLACK);
+            DrawGame(&game.player, &game.enemies, game.bullets, game.score);
+        EndDrawing();
+    }
+    UnloadRenderResources();
+    CloseWindow();
+    return 0;
+}
+Exemplo de estrutura de entidade:
+typedef struct {
+    Vector2 position;
+    Vector2 velocity;
+    float radius;
+    bool active;
+} Player;
+
+Exemplo de renderização:
+
+void DrawGame(const Player *player, const EnemyList *enemies, const Bullet *bullets, int score) {
+    DrawCircleV(player->position, player->radius, WHITE);
+    // ... desenhar inimigos e projéteis como círculos ...
+    DrawText(TextFormat("%d", score), 20, 20, 40, WHITE);
+}

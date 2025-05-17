@@ -1,47 +1,44 @@
 #ifndef ENEMY_H
 #define ENEMY_H
 
-#include "raylib.h" // Para Vector2
-#include "player.h" // Para Player struct, se necessário para lógica de perseguição
+#include "raylib.h"
+#include "utils.h" // Para raios e velocidades de inimigo
+#include "bullet.h" // Para permitir que inimigos atirem
 #include <stdbool.h>
 
-#define ENEMY_SIZE 32     // tamanho do inimigo
-#define ENEMY_SPEED 100   // velocidade base dos inimigos
-// Adicionar ENEMY_HP se os inimigos tiverem vida
-// #define ENEMY_HP 1
+// Tipos de inimigos
+typedef enum {
+    ENEMY_TYPE_NORMAL,   // Inimigo padrão
+    ENEMY_TYPE_SPEEDER,  // Pequeno e rápido
+    ENEMY_TYPE_TANK,     // Grande e resistente
+    ENEMY_TYPE_EXPLODER, // Explode em projéteis
+    ENEMY_TYPE_SHOOTER   // Mantém distância e dispara
+} EnemyType;
 
 typedef struct Enemy {
-    Vector2 position;           // Posição do inimigo
-    Vector2 size;               // Tamanho do inimigo
-    float speed;                // Velocidade atual (pode aumentar por fase)
-    // int hp;                  // Pontos de vida, se aplicável
-    bool active;                // Estado do inimigo (ativo ou não)
-    struct Enemy *prev, *next;  // Para lista duplamente encadeada
+    Vector2 position;
+    Vector2 velocity;
+    float radius;
+    bool active;
+    Color color;
+    float speed;
+    EnemyType type;      // Tipo do inimigo
+    int health;          // Pontos de vida
+    float shootTimer;    // Para inimigos atiradores
+    int dodgeCount;      // Para inimigos que desviam
+    struct Enemy *next;
 } Enemy;
 
-// Lista duplamente encadeada de inimigos
 typedef struct {
     Enemy *head;
-    Enemy *tail;
-    int count;  // Contador de inimigos ativos
+    int count;
 } EnemyList;
 
-// Inicializa a lista de inimigos vazia.
 void InitEnemyList(EnemyList *list);
-
-// Adiciona um inimigo à lista em posição (x, y) e com determinada velocidade.
-// Modificado para aceitar Vector2 para posição
-void AddEnemy(EnemyList *list, Vector2 position, float speed);
-
-// Remove um inimigo da lista (por exemplo, quando morto ou desativado).
-// A remoção pode ser lógica (marcando como inativo) ou física (liberando memória).
-// Por ora, a função original remove da lista e libera memória.
-void RemoveEnemy(EnemyList *list, Enemy *enemy);
-
-// Atualiza todos os inimigos ativos: eles perseguem o jogador, etc.
-void UpdateEnemies(EnemyList *list, const Player *player, float deltaTime, int windowWidth, int windowHeight);
-
-// A função drawEnemies foi removida daqui. A renderização será feita pelo módulo render.c
-// void drawEnemies(EnemyList *list); // Removido
+void AddEnemy(EnemyList *list, Vector2 position, float radius, float speed, Color color, EnemyType type);
+void UpdateEnemies(EnemyList *list, Vector2 playerPosition, float deltaTime, int screenWidth, int screenHeight, Bullet **playerBullets, Bullet **enemyBullets);
+void DrawEnemies(const EnemyList *list);
+void RemoveEnemy(EnemyList *list, Enemy *toRemove);
+void FreeEnemies(EnemyList *list);
 
 #endif // ENEMY_H

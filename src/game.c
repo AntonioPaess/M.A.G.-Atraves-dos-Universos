@@ -1,388 +1,416 @@
 #include "game.h"
-#include "input.h" 
-#include "render.h" 
+#include "raylib.h"
+#include "raymath.h"  // Adicionando include para funções Vector2
+#include "utils.h"
 #include "player.h"
 #include "enemy.h"
 #include "bullet.h"
-#include "scoreboard.h"
-#include "utils.h" // For SCREEN_WIDTH, SCREEN_HEIGHT
-#include "raylib.h"
-#include <stdio.h>
-#include <stdlib.h> 
-#include <string.h> 
-#include <time.h>   
-#include <math.h> // Adicionado para sqrtf
-
-#define MAX_LEVELS 10
-#define ENEMIES_PER_LEVEL_MULTIPLIER 10
-#define MAX_ENEMIES_ON_SCREEN 100
-
-// Funções auxiliares internas ao módulo game
-void HandlePlayerInput(Game *game, float deltaTime);
-void HandleCollisions(Game *game);
-void SpawnEnemiesForLevel(Game *game);
-void UpdateEntities(Game *game, float deltaTime);
-void CheckLevelCompletion(Game *game);
-void CheckGameOver(Game *game);
-
-void InitGame(Game *game) {
-    srand(time(NULL));
-    game->score = 0;
-    game->currentLevel = 1;
-    game->totalLevels = MAX_LEVELS;
-    game->newLevelStarted = true;
-    game->currentState = GAME_STATE_MAIN_MENU; 
-    game->bullets = NULL;
-    game->charCountPlayerName = 0;
-    game->playerNameInput[0] = '\0';
-
-    InitPlayer(&game->player, SCREEN_WIDTH, SCREEN_HEIGHT);
-    InitEnemyList(&game->enemies);
-    LoadRanking(game); 
-    InitRenderResources(); 
-    // InitAudioDevice(); 
-    // LoadAudioResources(); 
-}
+#include "audio.h"
+#include "render.h" // Incluindo para acesso às funções de renderização
+#include <stdlib.h> // Para NULL e free()
 
 void ResetGame(Game *game) {
-    Bullet *b = game->bullets;
-    while (b != NULL) {
-        Bullet *next_b = b->next;
-        free(b);
-        b = next_b;
+    // Limpar todos os inimigos
+    Enemy *currentEnemy = game->enemies.head;
+    while (currentEnemy != NULL) {
+        Enemy *nextEnemy = currentEnemy->next;
+        free(currentEnemy);
+        currentEnemy = nextEnemy;
+    }
+    game->enemies.head = NULL;
+    game->enemies.count = 0;
+
+    // Limpar todos os projéteis
+    Bullet *currentBullet = game->bullets;
+    while (currentBullet != NULL) {
+        Bullet *nextBullet = currentBullet->next;
+        free(currentBullet);
+        currentBullet = nextBullet;
     }
     game->bullets = NULL;
 
-    Enemy *e = game->enemies.head;
-    while (e != NULL) {
-        Enemy *next_e = e->next;
-        RemoveEnemy(&game->enemies, e); 
-        e = next_e;
-    }
-
-    game->score = 0;
-    game->currentLevel = 1;
-    game->newLevelStarted = true;
+    // Reiniciar a posição do jogador
     InitPlayer(&game->player, SCREEN_WIDTH, SCREEN_HEIGHT);
-    game->charCountPlayerName = 0;
-    game->playerNameInput[0] = '\0';
+
+    // Reiniciar pontuação
+    game->score = 0;
+
+    // Reiniciar timers
+    game->enemySpawnTimer = 0.0f;
+    game->enemySpawnInterval = 1.5f; // Intervalo inicial
+    game->difficultyTimer = 0.0f;
+
+    // Mudar o estado para jogando
+    game->currentState = GAME_STATE_PLAYING;
+
+    // Reiniciar música se necessário
+    if (IsAudioDeviceReady() && game->backgroundMusic.ctxData != NULL) {
+        StopMusicStream(game->backgroundMusic);
+        PlayMusicStream(game->backgroundMusic);
+    }
 }
 
-void StartNextLevel(Game *game) {
-    Bullet *b = game->bullets;
-    while (b != NULL) {
-        Bullet *next_b = b->next;
-        free(b);
-        b = next_b;
-    }
-    game->bullets = NULL;
-    
-    Enemy *e = game->enemies.head;
-    while (e != NULL) {
-        Enemy *next_e = e->next;
-        RemoveEnemy(&game->enemies, e);
-        e = next_e;
-    }
-
-    game->newLevelStarted = true;
-    // Reset player position for new level
-    game->player.position.x = SCREEN_WIDTH / 2.0f - game->player.size.x / 2.0f;
-    game->player.position.y = SCREEN_HEIGHT - game->player.size.y - 10.0f;
-    SpawnEnemiesForLevel(game);
-}
-
-void SpawnEnemiesForLevel(Game *game) {
-    if (!game->newLevelStarted) return;
-
-    int numEnemiesToSpawn = game->currentLevel * ENEMIES_PER_LEVEL_MULTIPLIER;
-    if (numEnemiesToSpawn > MAX_ENEMIES_ON_SCREEN) {
-        numEnemiesToSpawn = MAX_ENEMIES_ON_SCREEN;
-    }
-    game->enemiesToSpawnThisLevel = numEnemiesToSpawn;
-    game->enemiesRemainingInLevel = numEnemiesToSpawn;
-
-    printf("Iniciando Nível %d com %d inimigos.\n", game->currentLevel, numEnemiesToSpawn);
-    for (int i = 0; i < numEnemiesToSpawn; i++) {
-        float x_pos = (float)GetRandomValue(0, SCREEN_WIDTH - ENEMY_SIZE);
-        float y_pos = (float)GetRandomValue(0, SCREEN_HEIGHT / 2); 
-        
-        Rectangle enemyRec = {x_pos, y_pos, ENEMY_SIZE, ENEMY_SIZE};
-        Rectangle playerRec = {game->player.position.x, game->player.position.y, game->player.size.x, game->player.size.y};
-
-        while (CheckCollisionRecs(enemyRec, playerRec)) {
-            x_pos = (float)GetRandomValue(0, SCREEN_WIDTH - ENEMY_SIZE);
-            y_pos = (float)GetRandomValue(0, SCREEN_HEIGHT / 2);
-            enemyRec.x = x_pos;
-            enemyRec.y = y_pos;
+void UpdateDifficulty(Game *game, float deltaTime) {
+    game->difficultyTimer += deltaTime;
+    // A cada 10 segundos, aumenta a dificuldade (diminui o intervalo de spawn)
+    if (game->difficultyTimer > 10.0f) {
+        game->enemySpawnInterval *= 0.90f; // Diminui o intervalo em 10%
+        if (game->enemySpawnInterval < 0.2f) { // Limite mínimo para o intervalo
+            game->enemySpawnInterval = 0.2f;
         }
-        float speed = ENEMY_SPEED + (game->currentLevel -1) * 5.0f; 
-        AddEnemy(&game->enemies, (Vector2){x_pos, y_pos}, speed);
+        game->difficultyTimer = 0.0f; // Reseta o timer de dificuldade
+        // printf("Dificuldade aumentada! Novo intervalo de spawn: %.2f s\n", game->enemySpawnInterval);
     }
-    game->newLevelStarted = false;
 }
 
-void HandlePlayerInput(Game *game, float deltaTime) {
-    // Lógica para atirar com o mouse
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) { // Alterado para MOUSE_LEFT_BUTTON
-        // Obter posição do mouse
+void SpawnEnemy(Game *game) {
+    game->enemySpawnTimer += GetFrameTime();
+    if (game->enemySpawnTimer >= game->enemySpawnInterval) {
+        game->enemySpawnTimer = 0.0f;
+
+        Vector2 spawnPosition;
+        int side = GetRandomValue(0, 3); // 0: top, 1: bottom, 2: left, 3: right
+
+        // Determinar o tipo de inimigo baseado em probabilidade e score
+        EnemyType type;
+        int randomType = GetRandomValue(1, 100);
+        
+        // Progressivamente introduzir inimigos mais difíceis com base na pontuação
+        if (game->score < 1000) {
+            // No início, apenas inimigos normais
+            type = ENEMY_TYPE_NORMAL;
+        } 
+        else if (game->score < 2000) {
+            // Entre 1000-2000, introduz shooters e tanks
+            if (randomType <= 40) type = ENEMY_TYPE_NORMAL;
+            else if (randomType <= 70) type = ENEMY_TYPE_SHOOTER; // Shooter aparece aqui
+            else if (randomType <= 90) type = ENEMY_TYPE_TANK;
+            else type = ENEMY_TYPE_EXPLODER;
+        }
+        else if (game->score < 3000) {
+            // Entre 2000-3000, introduz speeders
+            if (randomType <= 30) type = ENEMY_TYPE_NORMAL;
+            else if (randomType <= 50) type = ENEMY_TYPE_SHOOTER;
+            else if (randomType <= 70) type = ENEMY_TYPE_TANK;
+            else if (randomType <= 85) type = ENEMY_TYPE_EXPLODER;
+            else type = ENEMY_TYPE_SPEEDER; // Speeders aparecem aqui
+        }
+        else {
+            // Fase avançada acima de 3000 pontos
+            if (randomType <= 15) type = ENEMY_TYPE_NORMAL;
+            else if (randomType <= 35) type = ENEMY_TYPE_SHOOTER;
+            else if (randomType <= 55) type = ENEMY_TYPE_TANK;
+            else if (randomType <= 80) type = ENEMY_TYPE_EXPLODER;
+            else type = ENEMY_TYPE_SPEEDER;
+        }
+        
+        // Ajustar raio e velocidade com base no tipo
+        float radius;
+        float speed;
+        
+        switch (type) {
+            case ENEMY_TYPE_SPEEDER:
+                radius = ENEMY_RADIUS_MIN;
+                speed = ENEMY_SPEED_MAX + (game->score / 1000.0f);
+                break;
+            case ENEMY_TYPE_TANK:
+                radius = ENEMY_RADIUS_MAX;
+                speed = ENEMY_SPEED_MIN + (game->score / 2000.0f);
+                break;
+            case ENEMY_TYPE_EXPLODER:
+                radius = ENEMY_RADIUS_MIN + 5.0f;
+                speed = ENEMY_SPEED_MIN + (ENEMY_SPEED_MAX / 2.0f) + (game->score / 1500.0f);
+                break;
+            case ENEMY_TYPE_SHOOTER:
+                radius = ENEMY_RADIUS_MIN + 3.0f;
+                speed = ENEMY_SPEED_MIN + (ENEMY_SPEED_MAX / 3.0f) + (game->score / 1800.0f);
+                break;
+            default: // ENEMY_TYPE_NORMAL
+                radius = GetRandomValue(ENEMY_RADIUS_MIN, ENEMY_RADIUS_MAX);
+                speed = GetRandomValue(ENEMY_SPEED_MIN, ENEMY_SPEED_MAX) + (game->score / 1000.0f);
+                break;
+        }
+        
+        // Limitar velocidade máxima
+        if (speed > ENEMY_SPEED_MAX * 2) speed = ENEMY_SPEED_MAX * 2;
+
+        // Posição de spawn baseada no lado
+        switch (side) {
+            case 0: // Top
+                spawnPosition = (Vector2){(float)GetRandomValue(0, SCREEN_WIDTH), -radius};
+                break;
+            case 1: // Bottom
+                spawnPosition = (Vector2){(float)GetRandomValue(0, SCREEN_WIDTH), SCREEN_HEIGHT + radius};
+                break;
+            case 2: // Left
+                spawnPosition = (Vector2){-radius, (float)GetRandomValue(0, SCREEN_HEIGHT)};
+                break;
+            case 3: // Right
+                spawnPosition = (Vector2){SCREEN_WIDTH + radius, (float)GetRandomValue(0, SCREEN_HEIGHT)};
+                break;
+        }
+        
+        AddEnemy(&game->enemies, spawnPosition, radius, speed, WHITE, type);
+    }
+}
+
+void HandleInput(Game *game, float deltaTime) {
+    // Movimento do jogador é tratado em UpdatePlayer
+
+    // Atirar
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         Vector2 mousePos = GetMousePosition();
+        Vector2 direction = {0}; // Inicializando direction com zeros
         
-        // Calcular direção do tiro (do centro do jogador para o mouse)
-        Vector2 playerCenter = {
-            game->player.position.x + game->player.size.x / 2.0f,
-            game->player.position.y + game->player.size.y / 2.0f
-        };
+        // Calculando direction com funções do raymath.h
+        Vector2 diff = Vector2Subtract(mousePos, game->player.position);
+        direction = Vector2Normalize(diff);
         
-        Vector2 direction = {
-            mousePos.x - playerCenter.x,
-            mousePos.y - playerCenter.y
-        };
-        
-        // Normalizar o vetor de direção
-        float length = sqrtf(direction.x * direction.x + direction.y * direction.y);
-        if (length > 0) { // Evitar divisão por zero
-            direction.x /= length;
-            direction.y /= length;
-        } else {
-            // Caso o mouse esteja exatamente no centro do jogador, defina uma direção padrão (ex: para cima)
-            // Ou simplesmente não atire, dependendo da preferência.
-            // Aqui, vamos definir uma direção padrão para cima, como exemplo.
-            direction = (Vector2){0.0f, -1.0f}; 
-        }
-        
-        // Posição inicial do projétil (do centro do jogador, ajustado pelo tamanho do projétil)
-        Vector2 bulletStartPosition = {
-            playerCenter.x - BULLET_SIZE / 2.0f,
-            playerCenter.y - BULLET_SIZE / 2.0f
-        };
-        
-        // Criar projétil na direção calculada
-        AddBullet(&game->bullets, 
-                 bulletStartPosition,
-                 direction);
-        // PlaySound(game->shootSound); // Se tiver um som de tiro
-    }
-}
+        // A posição inicial do projétil deve ser o centro do jogador
+        Vector2 bulletStartPosition = game->player.position;
 
-void UpdateEntities(Game *game, float deltaTime) {
-    UpdatePlayer(&game->player, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
-    UpdateEnemies(&game->enemies, &game->player, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
-    UpdateBullets(&game->bullets, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
+        AddBullet(&game->bullets, bulletStartPosition, direction);
+        PlayGameSound(game->shootSound);
+    }
 }
 
 void HandleCollisions(Game *game) {
-    Bullet **b_ptr = &game->bullets;
-    while (*b_ptr != NULL) {
-        Bullet *current_bullet = *b_ptr;
-        bool bullet_removed = false;
+    // Colisão Projétil -> Inimigo
+    Bullet *currentBullet = game->bullets;
+    while (currentBullet != NULL) {
+        if (currentBullet->active) {
+            Enemy *currentEnemy = game->enemies.head;
+            Enemy *prevEnemy = NULL;
+            while (currentEnemy != NULL) {
+                if (currentEnemy->active) {
+                    if (CheckCollisionCircles(currentBullet->position, currentBullet->radius,
+                                              currentEnemy->position, currentEnemy->radius)) {
+                        PlayGameSound(game->enemyExplodeSound);
+                        currentBullet->active = false; // Projétil é consumido
+                        
+                        // Reduzir vida do inimigo
+                        currentEnemy->health--;
+                        
+                        // Se o inimigo foi destruído
+                        if (currentEnemy->health <= 0) {
+                            // Se for um exploder, gerar projéteis em todas as direções
+                            if (currentEnemy->type == ENEMY_TYPE_EXPLODER) {
+                                for (int i = 0; i < 8; i++) {
+                                    float angle = i * (2.0f * PI / 8.0f);
+                                    Vector2 direction = {cosf(angle), sinf(angle)};
+                                    AddBullet(&game->enemyBullets, currentEnemy->position, direction);
+                                }
+                            }
+                            
+                            // Remover o inimigo
+                            Enemy* toRemove = currentEnemy;
+                            currentEnemy = currentEnemy->next;
 
-        if(current_bullet->active) {
-            Rectangle bulletRec = {current_bullet->position.x, current_bullet->position.y, current_bullet->size.x, current_bullet->size.y};
-            Enemy *enemy = game->enemies.head;
-            while (enemy != NULL) {
-                Enemy *next_enemy = enemy->next;
-                if(enemy->active) {
-                    Rectangle enemyRec = {enemy->position.x, enemy->position.y, enemy->size.x, enemy->size.y};
-                    if (CheckCollisionRecs(bulletRec, enemyRec)) {
-                        // PlaySound(enemyHitSound);
-                        RemoveEnemy(&game->enemies, enemy); 
-                        game->score += 100; 
-                        game->enemiesRemainingInLevel--;
-
-                        current_bullet->active = false; // Mark bullet for removal
-                        // Bullet will be physically removed in UpdateBullets or here
-                        // For now, UpdateBullets handles removal of inactive bullets
-                        bullet_removed = true; // To break from inner loop if bullet hits one enemy
-                        break; 
+                            if (prevEnemy == NULL) game->enemies.head = toRemove->next;
+                            else prevEnemy->next = toRemove->next;
+                            
+                            free(toRemove);
+                            game->enemies.count--;
+                            
+                            game->score += 100; // Adiciona pontos
+                        } else {
+                            // Inimigo ainda tem vida
+                            prevEnemy = currentEnemy;
+                            currentEnemy = currentEnemy->next;
+                        }
+                        
+                        break; // Projétil só pode atingir um inimigo
                     }
                 }
-                enemy = next_enemy;
+                prevEnemy = currentEnemy;
+                if (currentEnemy) currentEnemy = currentEnemy->next;
             }
         }
-        // If bullet was marked inactive (e.g. hit an enemy or went off-screen in UpdateBullets)
-        // UpdateBullets should handle the actual free(). Here we just advance the pointer if it wasn't removed this frame.
-        if (!current_bullet->active && !bullet_removed) { // Bullet became inactive for other reasons (e.g. off-screen)
-             // This case is tricky: if UpdateBullets already freed it, this is a double free risk.
-             // Let's assume UpdateBullets handles freeing. If it was marked inactive here, UpdateBullets will free it.
-        }
-
-        if (!bullet_removed) { // If bullet didn't hit anything this iteration
-             b_ptr = &((*b_ptr)->next); 
-        } else {
-            // If bullet hit an enemy, it's marked inactive. UpdateBullets will remove it.
-            // We need to re-evaluate *b_ptr in case it was the one removed by UpdateBullets
-            // This part is complex if UpdateBullets also removes. Simpler: mark inactive, let UpdateBullets remove.
-            // For now, if bullet_removed is true, we broke the inner loop. The outer loop continues.
-            // The b_ptr should point to the next valid bullet or NULL. UpdateBullets handles this.
-            // Let's simplify: if a bullet is used, it's marked inactive. UpdateBullets cleans up.
-            // The current_bullet is now inactive, the *b_ptr might be advanced by UpdateBullets if it was freed.
-            // This loop structure for bullet removal needs care. The one in UpdateBullets is safer.
-            // Let's assume this loop only marks bullets as inactive upon collision.
-            if (current_bullet->active) { // If not marked inactive by collision
-                 b_ptr = &((*b_ptr)->next);
-            }
-            // If it was marked inactive, UpdateBullets will handle removal, so we just need to ensure b_ptr is correct.
-            // This is safer: iterate and if a collision happens, mark bullet inactive. UpdateBullets will remove.
-            // The b_ptr advancement should be simple: if current bullet is still *b_ptr, advance. If *b_ptr changed (freed), it's already advanced.
-            // The safest is to let UpdateBullets handle all removals. This loop just marks.
-             if (bullet_removed) {
-                // No need to advance b_ptr, it will be handled by UpdateBullets if the bullet is removed
-                // or the loop will continue with the same b_ptr if it was not the head. This is still risky.
-                // A common pattern is to rebuild the list or use careful pointer manipulation.
-                // Given UpdateBullets already has a robust removal, let's rely on that.
-                // This loop just marks active = false.
-             } else {
-                b_ptr = &((*b_ptr)->next);
-             }
-        }
+        currentBullet = currentBullet->next;
     }
 
-    if (game->player.lives > 0) {
-        Rectangle playerRec = {game->player.position.x, game->player.position.y, game->player.size.x, game->player.size.y};
-        Enemy *enemy = game->enemies.head;
-        while (enemy != NULL) {
-            if(enemy->active) {
-                Rectangle enemyRec = {enemy->position.x, enemy->position.y, enemy->size.x, enemy->size.y};
-                if (CheckCollisionRecs(playerRec, enemyRec)) {
-                    // PlaySound(playerHitSound);
-                    game->player.lives--;
-                    printf("Jogador atingido! Vidas: %d\n", game->player.lives);
-                    
-                    Enemy* toRemove = enemy;
-                    enemy = enemy->next; 
-                    RemoveEnemy(&game->enemies, toRemove);
-                    game->enemiesRemainingInLevel--; 
-                    continue; 
+    // Adicionar verificação para projéteis de inimigos atingindo o jogador
+    currentBullet = game->enemyBullets;
+    while (currentBullet != NULL) {
+        if (currentBullet->active && !game->player.isInvincible) {
+            if (CheckCollisionCircles(game->player.position, game->player.radius,
+                                      currentBullet->position, currentBullet->radius)) {
+                PlayGameSound(game->playerExplodeSound);
+                currentBullet->active = false; // Desativar o projétil
+                
+                // Reduzir vida
+                game->player.lives--;
+                
+                if (game->player.lives <= 0) {
+                    // Game over se não tiver mais vidas
+                    game->currentState = GAME_STATE_GAME_OVER;
+                    return;
+                } else {
+                    // Ativar invencibilidade temporária
+                    game->player.isInvincible = true;
+                    game->player.invincibleTimer = INVINCIBILITY_TIME;
+                    game->player.blinkTimer = BLINK_FREQUENCY;
                 }
+                
+                break;
             }
-            enemy = enemy->next;
         }
+        currentBullet = currentBullet->next;
     }
-}
 
-void CheckLevelCompletion(Game *game) {
-    if (game->player.lives > 0 && game->enemies.count == 0 && !game->newLevelStarted) { 
-        printf("Nível %d concluído!\n", game->currentLevel);
-        // PlaySound(levelUpSound);
-        game->currentLevel++;
-        if (game->currentLevel > game->totalLevels) {
-            game->currentState = GAME_STATE_VICTORY;
-            printf("VITÓRIA!\n");
-            // SavePlayerScore(game); // Score saving is handled when ENTER is pressed on victory/gameover screen
-        } else {
-            StartNextLevel(game);
+    // Colisão Inimigo -> Jogador
+    Enemy *currentEnemy = game->enemies.head;
+    Enemy *prevEnemy = NULL;
+    while (currentEnemy != NULL) {
+        if (currentEnemy->active && !game->player.isInvincible) {
+            if (CheckCollisionCircles(game->player.position, game->player.radius,
+                                      currentEnemy->position, currentEnemy->radius)) {
+                PlayGameSound(game->playerExplodeSound);
+                
+                // Remover o inimigo que colidiu com o jogador
+                Enemy* toRemove = currentEnemy;
+                currentEnemy = currentEnemy->next;
+                
+                if (prevEnemy == NULL) {
+                    game->enemies.head = toRemove->next;
+                } else {
+                    prevEnemy->next = toRemove->next;
+                }
+                
+                free(toRemove);
+                game->enemies.count--;
+                
+                // Reduzir vida
+                game->player.lives--;
+                
+                if (game->player.lives <= 0) {
+                    // Game over se não tiver mais vidas
+                    game->currentState = GAME_STATE_GAME_OVER;
+                    return;
+                } else {
+                    // Ativar invencibilidade temporária
+                    game->player.isInvincible = true;
+                    game->player.invincibleTimer = INVINCIBILITY_TIME;
+                    game->player.blinkTimer = BLINK_FREQUENCY;
+                }
+                
+                break;
+            }
         }
+        prevEnemy = currentEnemy;
+        if (currentEnemy) currentEnemy = currentEnemy->next;
     }
 }
 
-void CheckGameOver(Game *game) {
-    if (game->player.lives <= 0 && game->currentState == GAME_STATE_PLAYING) { // Ensure it only triggers once
-        game->currentState = GAME_STATE_GAME_OVER;
-        printf("GAME OVER!\n");
-        // SavePlayerScore(game); // Score saving is handled when ENTER is pressed on victory/gameover screen
-        // PlaySound(gameOverSound);
-    }
-}
-
-void LoadRanking(Game *game) {
-    ScoreEntry *loaded_scores = NULL;
-    int num_loaded = LoadScoreboard("ranking.txt", &loaded_scores);
+void InitGame(Game *game) {
+    // Inicializar o jogador
+    InitPlayer(&game->player, SCREEN_WIDTH, SCREEN_HEIGHT);
     
-    // The file should be sorted by SavePlayerScore. If not, sort here.
-    // SortScoreboard(loaded_scores, num_loaded); // Optional: if file might not be sorted
-
-    game->rankingCount = 0;
-    for (int i = 0; i < num_loaded && i < MAX_SCORES; ++i) {
-        game->ranking[i] = loaded_scores[i];
-        game->rankingCount++;
-    }
-    if (loaded_scores) {
-        free(loaded_scores);
-    }
-}
-
-void SavePlayerScore(Game *game) {
-    ScoreEntry entry;
-    if (strlen(game->playerNameInput) == 0) {
-         strcpy(entry.name, "M.A.G."); 
-    } else {
-        strncpy(entry.name, game->playerNameInput, MAX_NAME_LENGTH -1);
-        entry.name[MAX_NAME_LENGTH-1] = '\0'; // Ensure null termination
-    }
-    entry.score = game->score;
-    entry.lives = game->player.lives; 
-    entry.timeAlive = (float)GetTime(); // TODO: Implement a proper game timer
-    entry.enemiesKilled = 0; // TODO: Implement total enemies killed counter
-    entry.phasesWon = (game->currentState == GAME_STATE_VICTORY) ? game->totalLevels : game->currentLevel -1;
-    if (game->player.lives <= 0 && game->currentState != GAME_STATE_VICTORY) entry.phasesWon = game->currentLevel -1;
-    if (entry.phasesWon < 0) entry.phasesWon = 0; // Ensure non-negative
-
-    ScoreEntry *all_scores = NULL;
-    int total_score_count = LoadScoreboard("ranking.txt", &all_scores);
+    // Inicializar lista de inimigos
+    InitEnemyList(&game->enemies);
     
-    AddScoreEntry(&all_scores, &total_score_count, entry);
+    // Inicializar lista de projéteis
+    game->bullets = NULL;
+    game->enemyBullets = NULL; // Inicializa a lista de projéteis de inimigos
     
-    SortScoreboard(all_scores, total_score_count); // Sort before saving
+    // Inicializar pontuação
+    game->score = 0;
     
-    SaveScoreboard("ranking.txt", all_scores, total_score_count);
+    // Inicializar estado do jogo - começa no menu principal
+    game->currentState = GAME_STATE_MAIN_MENU;
     
-    if (all_scores) free(all_scores);
+    // Inicializar timers
+    game->enemySpawnTimer = 0.0f;
+    game->enemySpawnInterval = 1.5f; // Começa com 1.5 segundos entre spawns
+    game->difficultyTimer = 0.0f;
+    
+    // Inicializar áudio
+    LoadGameAudio(&game->shootSound, &game->enemyExplodeSound, &game->playerExplodeSound, &game->backgroundMusic);
 
-    LoadRanking(game); // Reload to update the game's internal top 5 ranking display
+    // Por padrão mostra o cursor (para o menu inicial)
+    ShowCursor();
 }
 
 void UpdateGame(Game *game, float deltaTime) {
+    UpdateGameMusicStream(game->backgroundMusic);
+
     switch (game->currentState) {
         case GAME_STATE_MAIN_MENU:
-            if (IsKeyPressed(KEY_ENTER)) {
-                ResetGame(game);
-                game->currentState = GAME_STATE_PLAYING;
-                StartNextLevel(game); 
+            // Mostrar cursor normal no menu
+            ShowCursor();
+            // Verificar cliques nos botões
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                Vector2 mousePos = GetMousePosition();
+                
+                // Opção "INICIAR JOGO"
+                Rectangle startButton = {
+                    GetScreenWidth()/2 - MeasureText("INICIAR JOGO", 30)/2,
+                    GetScreenHeight()/2 + 100,
+                    MeasureText("INICIAR JOGO", 30),
+                    30
+                };
+                
+                // Opção "SAIR"
+                Rectangle exitButton = {
+                    GetScreenWidth()/2 - MeasureText("SAIR", 30)/2,
+                    GetScreenHeight()/2 + 160,
+                    MeasureText("SAIR", 30),
+                    30
+                };
+                
+                if (CheckCollisionPointRec(mousePos, startButton)) {
+                    // Iniciar o jogo
+                    ResetGame(game);
+                    game->currentState = GAME_STATE_PLAYING;
+                } else if (CheckCollisionPointRec(mousePos, exitButton)) {
+                    // Sair do jogo
+                    CloseWindow();
+                }
             }
             break;
+            
         case GAME_STATE_PLAYING:
-            // ProcessInput(); // Global inputs like pause
-            if (IsKeyPressed(KEY_P)) game->currentState = GAME_STATE_PAUSED;
+            // Esconder cursor durante o jogo (a mira será desenhada em render.c)
+            HideCursor();
+            // Código existente para o jogo
+            HandleInput(game, deltaTime);
+            UpdatePlayer(&game->player, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
+            UpdateEnemies(&game->enemies, game->player.position, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT, &game->bullets, &game->enemyBullets);
+            UpdateBullets(&game->bullets, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
+            // Atualizar também os projéteis dos inimigos
+            UpdateBullets(&game->enemyBullets, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
+            HandleCollisions(game);
+            SpawnEnemy(game);
+            UpdateDifficulty(game, deltaTime);
+            break;
 
-            HandlePlayerInput(game, deltaTime); 
-            UpdateEntities(game, deltaTime);    
-            HandleCollisions(game);           
-            CheckLevelCompletion(game);       
-            CheckGameOver(game);              
-            break;
-        case GAME_STATE_PAUSED:
-            if (IsKeyPressed(KEY_P)) game->currentState = GAME_STATE_PLAYING; 
-            break;
         case GAME_STATE_GAME_OVER:
-        case GAME_STATE_VICTORY:
-            {
-                int key = GetCharPressed();
-                while (key > 0) {
-                    if ((key >= 32) && (key <= 125) && (game->charCountPlayerName < MAX_NAME_LENGTH - 1)) {
-                        game->playerNameInput[game->charCountPlayerName] = (char)key;
-                        game->playerNameInput[game->charCountPlayerName+1] = '\0'; 
-                        game->charCountPlayerName++;
-                    }
-                    key = GetCharPressed(); 
-                }
-                if (IsKeyPressed(KEY_BACKSPACE)) {
-                    if (game->charCountPlayerName > 0) {
-                        game->charCountPlayerName--;
-                        game->playerNameInput[game->charCountPlayerName] = '\0';
-                    }
-                }
-
-                if (IsKeyPressed(KEY_ENTER)) {
-                    SavePlayerScore(game); 
-                    game->currentState = GAME_STATE_MAIN_MENU;
-                }
-                if (IsKeyPressed(KEY_ESCAPE)) {
-                     game->currentState = GAME_STATE_MAIN_MENU;
-                }
+            // Mostrar cursor normal na tela de game over
+            ShowCursor();
+            if (IsKeyPressed(KEY_R)) {
+                ResetGame(game);
             }
-            break;
-        default:
+            // Opção para voltar ao menu principal
+            if (IsKeyPressed(KEY_M)) {
+                game->currentState = GAME_STATE_MAIN_MENU;
+            }
             break;
     }
 }
 
+// Apenas a função DrawGame
+void DrawGame(const Game *game) {
+    switch (game->currentState) {
+        case GAME_STATE_MAIN_MENU:
+            DrawMainMenu();
+            break;
+            
+        case GAME_STATE_PLAYING:
+            DrawGameplay(&game->player, &game->enemies, game->bullets, game->enemyBullets, game->score);
+            break;
+            
+        case GAME_STATE_GAME_OVER:
+            DrawGameOverScreen(game->score);
+            break;
+    }
+}

@@ -1,34 +1,25 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
-#include "raylib.h" // Adicionado para Vector2 e outras definições da Raylib, se necessário
+#include "raylib.h"
+#include "utils.h" // Para PLAYER_RADIUS, PLAYER_SPEED
 #include <stdbool.h>
 
-#define PLAYER_SPEED 200    // velocidade do jogador (pixels por segundo)
-#define PLAYER_SIZE 32      // tamanho (largura/altura) do jogador em pixels
-#define PLAYER_LIVES 3      // vidas iniciais do jogador
-
-#define PLAYER_WIDTH PLAYER_SIZE
-#define PLAYER_HEIGHT PLAYER_SIZE
+#define INVINCIBILITY_TIME 3.0f  // Tempo de invencibilidade em segundos
+#define BLINK_FREQUENCY 0.1f     // Frequência do piscar em segundos
 
 typedef struct {
-    Vector2 position;      // Posição do jogador (top-left), usando Vector2 da Raylib
-    Vector2 size;          // Tamanho do jogador (dimensões)
-    int lives;             // Vidas restantes
-    Vector2 last_direction; // Última direção de movimento (para atirar)
-    // Adicionar outros atributos específicos do jogador se necessário
-    // Por exemplo: float shootCooldown; Texture2D sprite;
+    Vector2 position;
+    float radius;
+    Color color;
+    int lives;               // Número de vidas (começa com 3)
+    bool isInvincible;       // Flag de invencibilidade
+    float invincibleTimer;   // Contador para o tempo de invencibilidade
+    float blinkTimer;        // Contador para o efeito de piscar
+    bool visible;            // Flag para controlar o efeito de piscar
 } Player;
 
-// Inicializa o jogador em posição inicial.
 void InitPlayer(Player *player, int windowWidth, int windowHeight);
-
-// Atualiza a lógica do jogador, incluindo movimento baseado em input.
-// A verificação de input (IsKeyDown) permanece aqui por enquanto, mas poderia ser movida para input.c
-// e o resultado passado para updatePlayer se uma maior abstração for desejada.
 void UpdatePlayer(Player *player, float deltaTime, int windowWidth, int windowHeight);
-
-// A função drawPlayer foi removida daqui. A renderização será feita pelo módulo render.c
-// void drawPlayer(Player *player); // Removido
 
 #endif // PLAYER_H
