@@ -664,177 +664,59 @@ void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *
                         DrawPixelCircle(trailPos.x, trailPos.y, radius * 0.5f, Fade(bodyColor, 0.3f));
                     }
                 }
-                else { // MACACO COMUM (NORMAL) - Animação mais fluida como no vídeo referência
-                    // Sistema de tempo para diferentes partes da animação
-                    float bounceTime = sinf(animTime * 2.5f) * 0.5f + 0.5f;
-                    // float tailTime = cosf(animTime * 1.8f); // Variável não utilizada
-                    float breathTime = sinf(animTime * 0.7f);
-                    
-                    // Parâmetros escaláveis
+                else { // MACACO COMUM (NORMAL)
+                    // Braços e pernas mais proporcionais
                     float limbLength = radius * 0.8f;
                     float shoulderOffset = radius * 0.4f;
-                    float bounceHeight = radius * 0.15f * bounceTime;
                     
-                    // Efeito de pulo/quique - corpo sobe e desce
-                    Vector2 bouncedPosition = {
-                        position.x,
-                        position.y - bounceHeight
-                    };
-                    
-                    // Corpo principal com efeito de respiração
-                    float breathScale = 1.0f + breathTime * 0.1f;
-                    DrawPixelCircle(bouncedPosition.x, bouncedPosition.y, bodyWidth * breathScale, bodyColor);
-                    
-                    // Sombra abaixo do corpo (para efeito de altura)
-                    float shadowSize = bodyWidth * (0.8f - bounceHeight/radius * 0.3f);
-                    DrawPixelCircle(position.x, position.y + radius * 0.1f, shadowSize, Fade(BLACK, 0.2f));
-                    
-                    // Braços com movimento de balanço mais natural
-                    float armAngle1 = -PI/4 + sinf(animTime * 3.5f) * 0.4f;
-                    float armAngle2 = -PI/4 - sinf(animTime * 3.5f) * 0.4f;
-                    
-                    // Braço esquerdo com juntas articuladas
-                    Vector2 shoulder1 = {bouncedPosition.x - shoulderOffset, bouncedPosition.y - radius * 0.1f};
-                    Vector2 elbow1 = {
-                        shoulder1.x + cosf(armAngle1) * limbLength * 0.5f,
-                        shoulder1.y + sinf(armAngle1) * limbLength * 0.5f
-                    };
+                    // Braços
+                    Vector2 shoulder1 = {position.x - shoulderOffset, position.y - radius * 0.2f};
                     Vector2 hand1 = {
-                        elbow1.x + cosf(armAngle1 + sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f,
-                        elbow1.y + sinf(armAngle1 + sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f
+                        shoulder1.x - limbLength * 0.6f,
+                        shoulder1.y + limbLength * (0.5f + limbSwing * 0.5f)  // Corrigido: armSwing -> limbSwing
                     };
+                    DrawPixelLine(shoulder1.x, shoulder1.y, hand1.x, hand1.y, bodyColor);
                     
-                    // Desenhar braço esquerdo
-                    DrawPixelLine(shoulder1.x, shoulder1.y, elbow1.x, elbow1.y, bodyColor);
-                    DrawPixelLine(elbow1.x, elbow1.y, hand1.x, hand1.y, bodyColor);
-                    DrawPixelCircle(elbow1.x, elbow1.y, radius * 0.15f, bodyColor);
-                    DrawPixelCircle(hand1.x, hand1.y, radius * 0.2f, bodyColor);
-                    
-                    // Braço direito com juntas articuladas
-                    Vector2 shoulder2 = {bouncedPosition.x + shoulderOffset, bouncedPosition.y - radius * 0.1f};
-                    Vector2 elbow2 = {
-                        shoulder2.x + cosf(armAngle2) * limbLength * 0.5f,
-                        shoulder2.y + sinf(armAngle2) * limbLength * 0.5f
-                    };
+                    Vector2 shoulder2 = {position.x + shoulderOffset, position.y - radius * 0.2f};
                     Vector2 hand2 = {
-                        elbow2.x + cosf(armAngle2 - sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f,
-                        elbow2.y + sinf(armAngle2 - sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f
+                        shoulder2.x + limbLength * 0.6f,
+                        shoulder2.y + limbLength * (0.5f - limbSwing * 0.5f)  // Corrigido: armSwing -> limbSwing
                     };
+                    DrawPixelLine(shoulder2.x, shoulder2.y, hand2.x, hand2.y, bodyColor);
                     
-                    // Desenhar braço direito
-                    DrawPixelLine(shoulder2.x, shoulder2.y, elbow2.x, elbow2.y, bodyColor);
-                    DrawPixelLine(elbow2.x, elbow2.y, hand2.x, hand2.y, bodyColor);
-                    DrawPixelCircle(elbow2.x, elbow2.y, radius * 0.15f, bodyColor);
-                    DrawPixelCircle(hand2.x, hand2.y, radius * 0.2f, bodyColor);
-                    
-                    // Pernas com movimento de oscilação oposto ao corpo
-                    float legAngle1 = PI/4 - sinf(animTime * 3.5f) * 0.3f;
-                    float legAngle2 = PI/4 + sinf(animTime * 3.5f) * 0.3f;
-                    
-                    // Perna esquerda
-                    Vector2 hip1 = {bouncedPosition.x - shoulderOffset * 0.7f, bouncedPosition.y + radius * 0.3f};
-                    Vector2 knee1 = {
-                        hip1.x + cosf(legAngle1) * limbLength * 0.5f,
-                        hip1.y + sinf(legAngle1) * limbLength * 0.5f
-                    };
+                    // Pernas
+                    Vector2 hip1 = {position.x - shoulderOffset * 0.7f, position.y + radius * 0.5f};
                     Vector2 foot1 = {
-                        knee1.x + cosf(legAngle1 + sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f,
-                        knee1.y + sinf(legAngle1 + sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f
+                        hip1.x - limbLength * 0.4f,
+                        hip1.y + limbLength * 0.7f
                     };
+                    DrawPixelLine(hip1.x, hip1.y, foot1.x, foot1.y, bodyColor);
                     
-                    // Desenhar perna esquerda
-                    DrawPixelLine(hip1.x, hip1.y, knee1.x, knee1.y, bodyColor);
-                    DrawPixelLine(knee1.x, knee1.y, foot1.x, foot1.y, bodyColor);
-                    DrawPixelCircle(knee1.x, knee1.y, radius * 0.15f, bodyColor);
-                    DrawPixelCircle(foot1.x, foot1.y, radius * 0.22f, bodyColor);
-                    
-                    // Perna direita
-                    Vector2 hip2 = {bouncedPosition.x + shoulderOffset * 0.7f, bouncedPosition.y + radius * 0.3f};
-                    Vector2 knee2 = {
-                        hip2.x + cosf(legAngle2) * limbLength * 0.5f,
-                        hip2.y + sinf(legAngle2) * limbLength * 0.5f
-                    };
+                    Vector2 hip2 = {position.x + shoulderOffset * 0.7f, position.y + radius * 0.5f};
                     Vector2 foot2 = {
-                        knee2.x + cosf(legAngle2 - sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f,
-                        knee2.y + sinf(legAngle2 - sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f
+                        hip2.x + limbLength * 0.4f,
+                        hip2.y + limbLength * 0.7f
                     };
+                    DrawPixelLine(hip2.x, hip2.y, foot2.x, foot2.y, bodyColor);
                     
-                    // Desenhar perna direita
-                    DrawPixelLine(hip2.x, hip2.y, knee2.x, knee2.y, bodyColor);
-                    DrawPixelLine(knee2.x, knee2.y, foot2.x, foot2.y, bodyColor);
-                    DrawPixelCircle(knee2.x, knee2.y, radius * 0.15f, bodyColor);
-                    DrawPixelCircle(foot2.x, foot2.y, radius * 0.22f, bodyColor);
-                    
-                    // Cauda com movimento ondulante mais elaborado
-                    float tailLength = radius * 2.0f;
-                    Vector2 tailBase = {bouncedPosition.x, bouncedPosition.y + radius * 0.4f};
-                    
-                    int tailSegments = 6;
-                    Vector2 prevPoint = tailBase;
-                    
-                    for (int i = 0; i < tailSegments; i++) {
-                        float t = (float)i / (tailSegments - 1);
-                        float waveOffset = sinf(animTime * 3.0f + t * PI * 2) * radius * (0.3f + t * 0.4f);
-                        float segmentLength = tailLength * (1.0f - t) / tailSegments * 1.5f;
-                        
-                        Vector2 tailPoint = {
-                            prevPoint.x + waveOffset,
-                            prevPoint.y + segmentLength
-                        };
-                        
-                        DrawPixelLine(prevPoint.x, prevPoint.y, tailPoint.x, tailPoint.y, bodyColor);
-                        DrawPixelCircle(tailPoint.x, tailPoint.y, radius * 0.15f * (1.0f - t * 0.7f), bodyColor);
-                        
-                        prevPoint = tailPoint;
-                    }
-                    
-                    // Cabeça na posição certa
-                    Vector2 headPos = {
-                        bouncedPosition.x + sinf(animTime * 2.0f) * radius * 0.08f,
-                        bouncedPosition.y - bodyHeight * 0.55f + sinf(animTime * 3.5f) * radius * 0.08f
+                    // Cauda
+                    float tailLength = radius * 1.5f;
+                    Vector2 tailBase = {position.x, position.y + radius * 0.6f};
+                    Vector2 tailEnd = {
+                        tailBase.x + sinf(animTime) * radius * 0.5f,
+                        tailBase.y + tailLength
                     };
-                    
-                    // Desenhar cabeça
-                    DrawPixelCircle(headPos.x, headPos.y, headSize, faceColor);
-                    
-                    // Expressão mais elaborada - sobrancelhas que se movem
-                    float browRaise = sinf(animTime * 1.2f) * 0.5f + 0.5f;
-                    
-                    // Sobrancelhas
-                    for (int i = -1; i <= 1; i += 2) {
-                        float x = headPos.x + i * eyeSpacing;
-                        float y = headPos.y - headSize * 0.2f - browRaise * headSize * 0.1f;
-                        float width = headSize * 0.25f;
-                        
-                        for (float t = 0; t <= 1.0f; t += 0.2f) {
-                            float px = x - width/2 + t * width;
-                            float py = y + sinf(t * PI) * headSize * 0.05f;
-                            DrawPixelCircle(px, py, 1.5f, detailColor);
-                        }
-                    }
-                    
-                    // Boca mais expressiva que varia conforme o tempo
-                    float mouthOpen = (sinf(animTime * 1.5f) * 0.5f + 0.5f) * 0.7f;
-                    if (mouthOpen > 0.3f) {
-                        // Boca aberta quando o valor de mouthOpen é alto
-                        DrawPixelCircle(headPos.x, headPos.y + headSize * 0.2f, headSize * 0.2f * mouthOpen, Fade(BLACK, 0.7f));
-                    } else {
-                        // Linha para boca fechada
-                        for (float t = 0.3f; t <= 0.7f; t += 0.1f) {
-                            float x = headPos.x - headSize * 0.3f + t * headSize * 0.6f;
-                            float y = headPos.y + headSize * 0.2f + sinf(t * PI) * headSize * 0.05f;
-                            DrawPixelCircle(x, y, 1.0f, BLACK);
-                        }
-                    }
+                    DrawPixelLine(tailBase.x, tailBase.y, tailEnd.x, tailEnd.y, bodyColor);
                 }
                 
+               
                 
             }
             currentEnemy = currentEnemy->next;
         }
     }
 
-    // Desenhar projéteis do jogador com animação de rastro energético
+    // Desenhar projéteis do jogador com efeito cósmico de buraco negro
     static float bulletAnimTime = 0.0f;
     bulletAnimTime += GetFrameTime() * 4.0f;
     
@@ -845,25 +727,148 @@ void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *
                 // Calcular a direção normalizada do projétil
                 Vector2 dir = Vector2Normalize(currentBullet->velocity);
                 
-                // Efeito de rastro (3 círculos cada vez menores)
-                for (int i = 1; i <= 3; i++) {
-                    float trailDist = i * 3.0f;
-                    Vector2 trailPos = {
-                        currentBullet->position.x - dir.x * trailDist,
-                        currentBullet->position.y - dir.y * trailDist
-                    };
+                // Aumentar tamanho do projétil
+                float sizeMultiplier = 1.5f; // Projétil 50% maior
+                float cosmicRadius = currentBullet->radius * sizeMultiplier;
+                
+                // Posição do projétil
+                Vector2 pos = currentBullet->position;
+                
+                // ===== CAMADA 1: AURA EXTERNA PULSANTE =====
+                float auraPulse = 0.6f + sinf(bulletAnimTime * 0.5f) * 0.4f;
+                float auraSize = cosmicRadius * 3.0f * auraPulse;
+                
+                // Desenhar várias camadas da aura com cores diferentes e opacidade baixa
+                for (int i = 0; i < 4; i++) {
+                    float layerSize = auraSize * (0.7f + i * 0.1f);
+                    float layerAlpha = 0.05f + i * 0.02f;
+                    Color auraColor;
                     
-                    float trailPulse = sinf(bulletAnimTime + i * 0.5f) * 0.2f + 0.8f;
-                    float trailAlpha = 0.7f - (i * 0.2f);
-                    float trailRadius = currentBullet->radius * (1.0f - (i * 0.25f)) * trailPulse;
+                    // Alternar cores da aura para efeito cósmico
+                    switch (i % 4) {
+                        case 0: auraColor = Fade(PURPLE, layerAlpha); break;
+                        case 1: auraColor = Fade(DARKBLUE, layerAlpha); break;
+                        case 2: auraColor = Fade(BLUE, layerAlpha); break;
+                        case 3: auraColor = Fade(SKYBLUE, layerAlpha); break;
+                    }
                     
-                    DrawPixelCircleV(trailPos, trailRadius, Fade(SKYBLUE, trailAlpha));
+                    DrawPixelCircleV(pos, layerSize, auraColor);
                 }
                 
-                // Projétil principal com efeito de pulso
-                float pulse = 0.8f + sinf(bulletAnimTime) * 0.2f;
-                DrawPixelCircleV(currentBullet->position, currentBullet->radius * pulse, SKYBLUE);
-                DrawPixelCircleV(currentBullet->position, currentBullet->radius * 0.6f * pulse, WHITE);
+                // ===== CAMADA 2: VÓRTICE ROTATIVO =====
+                // Desenhar espirais rotativas para efeito de vórtice
+                float vortexTime = bulletAnimTime * 2.0f;
+                float vortexRadius = cosmicRadius * 1.8f;
+                
+                for (int arm = 0; arm < 3; arm++) {
+                    float armOffset = arm * (PI * 2 / 3);
+                    
+                    for (float t = 0.1f; t <= 1.0f; t += 0.1f) {
+                        float spiralAngle = vortexTime + armOffset + t * PI * 4;
+                        float spiralRadius = vortexRadius * (1.0f - t * 0.9f);
+                        
+                        float x = pos.x + cosf(spiralAngle) * spiralRadius;
+                        float y = pos.y + sinf(spiralAngle) * spiralRadius;
+                        
+                        float dotSize = cosmicRadius * 0.4f * (1.0f - t * 0.8f);
+                        float alpha = 0.8f - t * 0.6f;
+                        
+                        // Alternar entre azul escuro e azul claro
+                        Color spiralColor = t < 0.5f ? 
+                            Fade(DARKBLUE, alpha) : 
+                            Fade(SKYBLUE, alpha);
+                        
+                        DrawPixelCircle(x, y, dotSize, spiralColor);
+                    }
+                }
+                
+                // ===== CAMADA 3: NÚCLEO DENSO DO BURACO NEGRO =====
+                // Centro escuro do buraco negro
+                float corePulse = 0.9f + sinf(bulletAnimTime * 3.0f) * 0.1f;
+                float coreSize = cosmicRadius * 1.2f * corePulse;
+                
+                // Desenhar camadas do núcleo com gradiente
+                DrawPixelCircleV(pos, coreSize, Fade(DARKBLUE, 0.9f));
+                DrawPixelCircleV(pos, coreSize * 0.85f, Fade(BLUE, 0.9f));
+                DrawPixelCircleV(pos, coreSize * 0.7f, Fade(BLACK, 0.8f));
+                DrawPixelCircleV(pos, coreSize * 0.5f, Fade(DARKPURPLE, 0.9f));
+                
+                // Brilho central intenso
+                float glowPulse = 0.7f + sinf(bulletAnimTime * 5.0f) * 0.3f;
+                DrawPixelCircleV(pos, coreSize * 0.25f * glowPulse, Fade(WHITE, 0.9f));
+                
+                // ===== CAMADA 4: PARTÍCULAS/SPARKLES =====
+                // Sparkles irradiando do centro
+                for (int i = 0; i < 8; i++) {
+                    float sparkleAngle = bulletAnimTime * 2.0f + i * (PI / 4);
+                    float sparkleDistance = cosmicRadius * (1.0f + sinf(bulletAnimTime * 3.0f + i) * 0.5f);
+                    
+                    float sparkX = pos.x + cosf(sparkleAngle) * sparkleDistance;
+                    float sparkY = pos.y + sinf(sparkleAngle) * sparkleDistance;
+                    
+                    // Tamanho das partículas varia com o tempo
+                    float sparkSize = cosmicRadius * 0.3f * (0.5f + sinf(bulletAnimTime * 6.0f + i * 0.7f) * 0.5f);
+                    
+                    // Cor dos sparkles - alternando entre branco e azul
+                    Color sparkleColor = (i % 2 == 0) ? 
+                        Fade(WHITE, 0.9f) : 
+                        Fade(SKYBLUE, 0.8f);
+                    
+                    DrawPixelCircle(sparkX, sparkY, sparkSize, sparkleColor);
+                    
+                    // Linhas de conexão das partículas ao centro (efeito de energia)
+                    if (i % 2 == 0) {
+                        float lineAlpha = 0.2f + sinf(bulletAnimTime * 3.0f + i) * 0.2f;
+                        DrawPixelLine(
+                            pos.x, pos.y,
+                            sparkX, sparkY,
+                            Fade(SKYBLUE, lineAlpha)
+                        );
+                    }
+                }
+                
+                // ===== CAMADA 5: RASTRO DE DISTORÇÃO ESPACIAL =====
+                // Rastro de "distorção espacial" atrás do projétil
+                int trailSegments = 5;
+                for (int i = 1; i <= trailSegments; i++) {
+                    float trailDist = i * 4.0f;
+                    Vector2 trailPos = {
+                        pos.x - dir.x * trailDist,
+                        pos.y - dir.y * trailDist
+                    };
+                    
+                    // Efeito de ondulação no rastro
+                    float waveOffset = sinf(bulletAnimTime * 3.0f + i * 0.7f) * cosmicRadius * 0.4f;
+                    trailPos.x += waveOffset * dir.y; // Movimento perpendicular à direção
+                    trailPos.y -= waveOffset * dir.x;
+                    
+                    float trailPulse = sinf(bulletAnimTime + i * 0.5f) * 0.2f + 0.8f;
+                    float trailAlpha = 0.5f - (i * 0.08f);
+                    float trailRadius = cosmicRadius * (0.9f - (i * 0.15f)) * trailPulse;
+                    
+                    // Alternar entre várias cores para efeito cósmico
+                    Color trailColor;
+                    switch (i % 3) {
+                        case 0: trailColor = Fade(DARKBLUE, trailAlpha); break;
+                        case 1: trailColor = Fade(SKYBLUE, trailAlpha); break;
+                        case 2: trailColor = Fade(DARKPURPLE, trailAlpha); break;
+                    }
+                    
+                    DrawPixelCircleV(trailPos, trailRadius, trailColor);
+                    
+                    // Adicionar distorções menores ao redor dos pontos do rastro
+                    if (i % 2 == 0) {
+                        for (int j = 0; j < 3; j++) {
+                            float distAngle = bulletAnimTime + j * (PI * 2 / 3);
+                            float distRadius = trailRadius * 0.5f;
+                            float distX = trailPos.x + cosf(distAngle) * distRadius;
+                            float distY = trailPos.y + sinf(distAngle) * distRadius;
+                            
+                            DrawPixelCircle(distX, distY, trailRadius * 0.3f, 
+                                          Fade(DARKBLUE, trailAlpha * 0.7f));
+                        }
+                    }
+                }
             }
             currentBullet = currentBullet->next;
         }
@@ -928,7 +933,7 @@ void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *
                         DrawPixelLine(top.x, top.y, bottom.x, bottom.y, peelColor);
                     }
                     
-                    // Detalhes das pontas da banana
+                    // Detalhes de manchas na banana
                     if (i == 0 || i == segments) {
                         DrawPixelCircle(point.x, point.y, bananaWidth * 0.3f, peelColor);
                     }
@@ -1409,7 +1414,7 @@ void DrawMinimalistCursor(void) {
     animTime += GetFrameTime() * 2.0f;
     
     // Tamanho maior para o quadrado com efeito de pulsação
-    float baseSize = 18.0f; 
+    float baseSize = 18.0f; // Aumentado de 14 para 18
     float pulseEffect = sinf(animTime) * 1.5f;
     float size = baseSize + pulseEffect;
     

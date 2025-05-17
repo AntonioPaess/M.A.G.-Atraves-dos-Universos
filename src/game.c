@@ -81,26 +81,26 @@ void SpawnEnemy(Game *game) {
             type = ENEMY_TYPE_NORMAL;
         } 
         else if (game->score < 2000) {
-            // Entre 1000-2000, introduz shooters e tanks
-            if (randomType <= 40) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 70) type = ENEMY_TYPE_SHOOTER; // Shooter aparece aqui
-            else if (randomType <= 90) type = ENEMY_TYPE_TANK;
+            // Entre 1000-2000, introduz shooters e tanks (reduzindo shooters)
+            if (randomType <= 50) type = ENEMY_TYPE_NORMAL;
+            else if (randomType <= 60) type = ENEMY_TYPE_SHOOTER; // Reduzido de 30% para 10%
+            else if (randomType <= 85) type = ENEMY_TYPE_TANK;
             else type = ENEMY_TYPE_EXPLODER;
         }
         else if (game->score < 3000) {
-            // Entre 2000-3000, introduz speeders
-            if (randomType <= 30) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 50) type = ENEMY_TYPE_SHOOTER;
-            else if (randomType <= 70) type = ENEMY_TYPE_TANK;
-            else if (randomType <= 85) type = ENEMY_TYPE_EXPLODER;
-            else type = ENEMY_TYPE_SPEEDER; // Speeders aparecem aqui
+            // Entre 2000-3000, introduz speeders (reduzindo shooters)
+            if (randomType <= 35) type = ENEMY_TYPE_NORMAL;
+            else if (randomType <= 45) type = ENEMY_TYPE_SHOOTER; // Reduzido de 20% para 10%
+            else if (randomType <= 75) type = ENEMY_TYPE_TANK;
+            else if (randomType <= 90) type = ENEMY_TYPE_EXPLODER;
+            else type = ENEMY_TYPE_SPEEDER;
         }
         else {
-            // Fase avançada acima de 3000 pontos
-            if (randomType <= 15) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 35) type = ENEMY_TYPE_SHOOTER;
+            // Fase avançada acima de 3000 pontos (reduzindo shooters)
+            if (randomType <= 20) type = ENEMY_TYPE_NORMAL;
+            else if (randomType <= 25) type = ENEMY_TYPE_SHOOTER; // Reduzido de 20% para 5%
             else if (randomType <= 55) type = ENEMY_TYPE_TANK;
-            else if (randomType <= 80) type = ENEMY_TYPE_EXPLODER;
+            else if (randomType <= 85) type = ENEMY_TYPE_EXPLODER;
             else type = ENEMY_TYPE_SPEEDER;
         }
         
