@@ -1,8 +1,23 @@
 #include "render.h"
 #include "raylib.h"
-#include "raymath.h"  // Adicionando raymath.h para funções de vetores (também contém Lerp)
-#include <stdio.h> // Para TextFormat
-#include <math.h>  // Para a função sinf
+#include "raymath.h"
+#include <stdio.h>
+#include <math.h>
+
+// Estrutura para gerenciar explosões
+typedef struct {
+    Vector2 position;
+    float radius;
+    float lifeTime;
+    float currentTime;
+    Color color;
+    bool active;
+    float rotation;
+} Explosion;
+
+// Array de explosões ativas
+#define MAX_EXPLOSIONS 32
+static Explosion explosions[MAX_EXPLOSIONS] = {0};
 
 // Declarações forward de todas as funções auxiliares
 static void DrawPixelLine(float x1, float y1, float x2, float y2, Color color);
@@ -34,60 +49,786 @@ static void DrawPixelLine(float x1, float y1, float x2, float y2, Color color) {
 // Não há mais InitRenderResources ou UnloadRenderResources se não usarmos fontes customizadas
 
 void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *bullets, const Bullet *enemyBullets, long score) {
-    // Desenhar jogador como um "buraco negro"
+    // Desenhar jogador como um peixe pixel art
     if (player) {
         if (player->visible) {
-            // Efeito de "buraco negro" com anéis concêntricos
-            static float holeTime = 0.0f;
-            holeTime += GetFrameTime() * 1.5f;
+            // Configurar animação e timing
+            static float fishTime = 0.0f;
+            fishTime += GetFrameTime() * 4.0f; // Velocidade da animação
             
-            // Círculo externo pulsante (aura)
-            float outerPulse = sinf(holeTime) * 3.0f;
-            DrawPixelCircleV(player->position, player->radius + outerPulse, Fade(DARKGRAY, 0.3f));
+            // Calcular a direção do movimento para orientar o peixe
+            static Vector2 lastPosition = {0, 0};
+            static Vector2 direction = {1, 0}; // Começa olhando para a direita
             
-            // Círculo principal mais escuro
-            DrawPixelCircleV(player->position, player->radius, BLACK);
+            // Apenas atualiza a direção se o jogador se moveu significativamente
+            if (Vector2Distance(lastPosition, player->position) > 0.5f) {
+                direction = Vector2Normalize(Vector2Subtract(player->position, lastPosition));
+                lastPosition = player->position;
+            }
             
-            // Borda brilhante
-            float borderPulse = 0.6f + sinf(holeTime * 1.2f) * 0.4f;
-            DrawCircleLinesV(player->position, player->radius, Fade(WHITE, borderPulse));
+            // Ângulo de orientação do peixe (baseado na direção do movimento)
+            float angle = atan2f(direction.y, direction.x);
+            float facing = direction.x > 0 ? 1.0f : -1.0f; // Determina se peixe olha para direita ou esquerda
             
-            // Efeito de "vórtice" no centro
-            float vortexSize = player->radius * 0.6f;
-            float vortexAngle = holeTime * 2.0f;
+            // Centro do peixe
+            Vector2 center = player->position;
+            float radius = player->radius * 1.2f; 
             
-            // Desenhar linhas espirais para um efeito de vórtice
-            for (int i = 0; i < 4; i++) {
-                float angle = vortexAngle + i * (PI / 2.0f);
-                float x1 = player->position.x + cosf(angle) * (vortexSize * 0.2f);
-                float y1 = player->position.y + sinf(angle) * (vortexSize * 0.2f);
-                float x2 = player->position.x + cosf(angle) * vortexSize;
-                float y2 = player->position.y + sinf(angle) * vortexSize;
+            // Cores do peixe
+            Color bodyColor = SKYBLUE;
+            Color finColor = Fade(BLUE, 0.7f);
+            Color eyeColor = WHITE;
+            Color pupilColor = BLACK;
+            
+            // Calcular ondulação da cauda e barbatanas
+            float tailWave = sinf(fishTime * 1.2f) * 0.6f;
+            float finWave = cosf(fishTime * 0.8f) * 0.3f;
+            
+            // Desenhar corpo principal (oval)
+            DrawPixelCircleV(center, radius, bodyColor);
+            
+            // Cauda (triangular com ondulação)
+            Vector2 tailBase = {
+                center.x - facing * radius * 0.7f,
+                center.y
+            };
+            
+            Vector2 tailTip = {
+                center.x - facing * (radius * 1.8f),
+                center.y + (tailWave * radius * 1.4f)
+            };
+            
+            Vector2 tailTop = {
+                center.x - facing * (radius * 1.2f),
+                center.y - radius * 0.5f
+            };
+            
+            Vector2 tailBottom = {
+                center.x - facing * (radius * 1.2f),
+                center.y + radius * 0.5f
+            };
+            
+            // Desenhar triangulos da cauda
+            DrawPixelLine(tailBase.x, tailBase.y, tailTip.x, tailTip.y, finColor);
+            DrawPixelLine(tailTop.x, tailTop.y, tailTip.x, tailTip.y, finColor);
+            DrawPixelLine(tailBottom.x, tailBottom.y, tailTip.x, tailTip.y, finColor);
+            
+            // Preencher cauda
+            for (float y = tailTop.y; y <= tailBottom.y; y += 2.0f) {
+                float t = (y - tailTop.y) / (tailBottom.y - tailTop.y);
+                float x = Lerp(tailTop.x, tailBottom.x, t);
+                DrawPixelLine(x, y, tailTip.x, tailTip.y, finColor);
+            }
+            
+            // Barbatana superior
+            Vector2 topFinBase = {
+                center.x + facing * (radius * 0.1f),
+                center.y - radius * 0.8f
+            };
+            
+            Vector2 topFinTip = {
+                center.x + facing * (radius * 0.5f + finWave * radius),
+                center.y - radius * 1.4f
+            };
+            
+            // Barbatana inferior
+            Vector2 bottomFinBase = {
+                center.x + facing * (radius * 0.1f),
+                center.y + radius * 0.8f
+            };
+            
+            Vector2 bottomFinTip = {
+                center.x + facing * (radius * 0.4f + finWave * radius * 0.8f),
+                center.y + radius * 1.3f
+            };
+            
+            // Desenhar barbatanas
+            DrawPixelLine(topFinBase.x, topFinBase.y, topFinTip.x, topFinTip.y, finColor);
+            DrawPixelLine(bottomFinBase.x, bottomFinBase.y, bottomFinTip.x, bottomFinTip.y, finColor);
+            
+            // Barbatana lateral
+            Vector2 sideFinBase = {
+                center.x,
+                center.y + radius * 0.2f
+            };
+            
+            Vector2 sideFinTip = {
+                center.x - facing * (radius * 0.8f),
+                center.y + radius * 0.2f + finWave * radius
+            };
+            
+            DrawPixelLine(sideFinBase.x, sideFinBase.y, sideFinTip.x, sideFinTip.y, finColor);
+            
+            // Olho
+            Vector2 eyePos = {
+                center.x + facing * radius * 0.5f,
+                center.y - radius * 0.2f
+            };
+            
+            DrawPixelCircle(eyePos.x, eyePos.y, radius * 0.25f, eyeColor);
+            
+            // Pupila (se move levemente com a animação)
+            float pupilOffset = sinf(fishTime * 0.5f) * 0.1f;
+            DrawPixelCircle(
+                eyePos.x + facing * pupilOffset * radius,
+                eyePos.y + pupilOffset * radius,
+                radius * 0.12f,
+                pupilColor
+            );
+            
+            // Detalhes das brânquias (arcos na lateral da cabeça)
+            Vector2 gillPos = {
+                center.x + facing * radius * 0.3f,
+                center.y
+            };
+            
+            for (int i = 0; i < 2; i++) {
+                float yOffset = (i - 0.5f) * radius * 0.4f;
+                float gillAngle = PI * 0.5f;
+                float startAngle = angle + (facing > 0 ? PI - gillAngle/2 : gillAngle/2);
                 
-                DrawPixelLine(x1, y1, x2, y2, Fade(WHITE, 0.5f));
+                for (float a = 0; a < gillAngle; a += 0.2f) {
+                    float px = gillPos.x + cosf(startAngle + (facing > 0 ? a : -a)) * radius * 0.4f;
+                    float py = gillPos.y + yOffset + sinf(startAngle + (facing > 0 ? a : -a)) * radius * 0.4f;
+                    
+                    DrawPixelCircle(px, py, 1, Fade(DARKBLUE, 0.5f));
+                }
+            }
+            
+            // Efeito de borbulhas ocasionais
+            static float bubbleTimer = 0.0f;
+            static Vector2 bubblePos = {0, 0};
+            static float bubbleSize = 0.0f;
+            static bool activeBubble = false;
+            
+            bubbleTimer -= GetFrameTime();
+            
+            if (bubbleTimer <= 0.0f && !activeBubble) {
+                // Criar nova bolha
+                bubbleTimer = GetRandomValue(10, 30) / 10.0f; // 1-3 segundos
+                bubblePos.x = center.x - facing * radius * 0.9f;
+                bubblePos.y = center.y + GetRandomValue(-10, 10);
+                bubbleSize = GetRandomValue(2, 5);
+                activeBubble = true;
+            }
+            
+            if (activeBubble) {
+                // Animar bolha existente
+                bubblePos.y -= GetFrameTime() * 30.0f; // Subir
+                bubblePos.x -= facing * GetFrameTime() * 10.0f; // Seguir para trás do peixe
+                
+                // Desenhar bolha
+                DrawPixelCircle(bubblePos.x, bubblePos.y, bubbleSize, Fade(LIGHTGRAY, 0.4f));
+                
+                // Verificar se bolha saiu da faixa visível
+                if (bubblePos.y < center.y - radius * 3) {
+                    activeBubble = false;
+                }
+            }
+            
+            // Efeito de "brilho" no corpo para sensação de escamas
+            for (int i = 0; i < 5; i++) {
+                float shimmerAngle = fishTime * 0.3f + i * 0.8f;
+                float sx = center.x + cosf(shimmerAngle) * radius * 0.6f;
+                float sy = center.y + sinf(shimmerAngle) * radius * 0.4f;
+                
+                DrawPixelCircle(sx, sy, 2, Fade(WHITE, 0.2f));
             }
         }
     }
 
-    // Desenhar inimigos
+    // Desenhar inimigos como gorilas e macacos
     if (enemies) {
+        static float primateTimes[5] = {0}; 
+        static float randomOffsets[10] = {0}; 
+        static bool initialized = false;
+        
+        // Inicializar offsets aleatórios uma vez
+        if (!initialized) {
+            for (int i = 0; i < 10; i++) {
+                randomOffsets[i] = GetRandomValue(0, 100) / 100.0f;
+            }
+            initialized = true;
+        }
+        
+        // Atualizar timers de animação
+        for (int i = 0; i < 5; i++) {
+            primateTimes[i] += GetFrameTime() * (2.0f + i * 0.3f);
+        }
+        
         const Enemy *currentEnemy = enemies->head;
         while (currentEnemy != NULL) {
             if (currentEnemy->active) {
-                DrawPixelCircleV(currentEnemy->position, currentEnemy->radius, currentEnemy->color);
+                // Pegar tipo e posição
+                EnemyType type = currentEnemy->type;
+                Vector2 position = currentEnemy->position;
+                float radius = currentEnemy->radius;
+                float animTime = primateTimes[type % 5];
                 
-                // Se for um Tank, desenhar um anel pixelado para mostrar que é mais resistente
-                if (currentEnemy->type == ENEMY_TYPE_TANK) {
-                    // Desenhar círculos concêntricos para simular o anel
-                    DrawPixelCircleV(currentEnemy->position, currentEnemy->radius - 2, Fade(BLACK, 0.5f));
-                    DrawPixelCircleV(currentEnemy->position, currentEnemy->radius - 4, Fade(WHITE, 0.5f));
+                // Ajustar tamanho de acordo com o tipo
+                float sizeMultiplier = 1.0f;
+                switch (type) {
+                    case ENEMY_TYPE_SPEEDER: sizeMultiplier = 1.8f; break;
+                    case ENEMY_TYPE_SHOOTER: sizeMultiplier = 1.5f; break;
+                    case ENEMY_TYPE_NORMAL: sizeMultiplier = 1.4f; break;
+                    case ENEMY_TYPE_EXPLODER: sizeMultiplier = 1.3f; break;
+                    case ENEMY_TYPE_TANK: sizeMultiplier = 1.2f; break;
+                }
+                radius *= sizeMultiplier;
+                
+                // Definir cores base
+                Color bodyColor = WHITE;
+                Color faceColor = LIGHTGRAY;
+                Color detailColor = DARKGRAY;
+                
+                // Cores específicas por tipo
+                switch (type) {
+                    case ENEMY_TYPE_TANK: // Gorila prateado
+                        bodyColor = (Color){120, 120, 120, 255};
+                        faceColor = (Color){80, 80, 80, 255};
+                        detailColor = (Color){50, 50, 50, 255};
+                        break;
+                        
+                    case ENEMY_TYPE_EXPLODER: // Babuíno vermelho
+                        bodyColor = (Color){180, 100, 100, 255};
+                        faceColor = (Color){200, 120, 120, 255};
+                        detailColor = (Color){140, 60, 60, 255};
+                        break;
+                        
+                    case ENEMY_TYPE_SHOOTER: // Chimpanzé marrom
+                        bodyColor = (Color){110, 90, 70, 255};
+                        faceColor = (Color){150, 130, 110, 255};
+                        detailColor = (Color){80, 60, 40, 255};
+                        break;
+                        
+                    case ENEMY_TYPE_SPEEDER: // Sagui amarelado
+                        bodyColor = (Color){180, 170, 130, 255};
+                        faceColor = (Color){210, 200, 170, 255};
+                        detailColor = (Color){150, 140, 100, 255};
+                        break;
+                        
+                    case ENEMY_TYPE_NORMAL: // Macaco comum
+                    default:
+                        bodyColor = (Color){130, 110, 90, 255};
+                        faceColor = (Color){160, 140, 120, 255};
+                        detailColor = (Color){100, 80, 60, 255};
+                        break;
                 }
                 
-                // Se for um Shooter, desenhar indicador visual pixelado
-                if (currentEnemy->type == ENEMY_TYPE_SHOOTER) {
-                    // Um padrão de pixels ao redor para indicar inimigo atirador
-                    DrawPixelCircleV(currentEnemy->position, currentEnemy->radius + 4, Fade(YELLOW, 0.3f));
+                // ----- ANIMAÇÕES PROCEDURAIS COMUNS A TODOS OS TIPOS -----
+                
+                // Modo de movimento - alterna entre andar/correr dependendo da velocidade
+                bool isRunning = Vector2Length(currentEnemy->velocity) > 70.0f;
+                
+                // Calcular ciclo de respiração
+                float breathingRate = isRunning ? 5.0f : 1.5f;
+                float breathFactor = sinf(animTime * breathingRate) * 0.1f + 0.95f;
+                
+                // Calcular ciclo de caminhada/corrida
+                float moveRate = isRunning ? 8.0f : 3.0f;
+                float moveCycle = sinf(animTime * moveRate + randomOffsets[type]) * 0.5f;
+                
+                // Sistema de movimentação pendular para simular caminhada quadrúpede
+                float bodyTilt = sinf(animTime * moveRate * 0.5f) * 0.15f; // Inclinação do corpo
+                float limbSwing = sinf(animTime * moveRate) * 0.4f; // Movimento dos membros
+                
+                // ----- DESENHO DO CORPO BASE -----
+                
+                // Calcular pontos para o corpo em formato de gota/pêra
+                float bodyWidth = radius * 0.9f * (1.0f + bodyTilt * 0.3f) * breathFactor;
+                float bodyHeight = radius * 1.1f * (1.0f - bodyTilt * 0.1f);
+                
+                // Desenhar corpo principal como uma forma de "gota"
+                DrawPixelCircle(position.x, position.y, bodyWidth, bodyColor);
+                
+                // Adicionar sombreamento ao corpo para dar profundidade
+                for (int i = 0; i < 3; i++) {
+                    float shadowAngle = PI * 0.25f + i * 0.2f;
+                    float shadowX = position.x + cosf(shadowAngle) * bodyWidth * 0.5f;
+                    float shadowY = position.y + sinf(shadowAngle) * bodyHeight * 0.5f;
+                    DrawPixelCircle(shadowX, shadowY, bodyWidth * 0.25f, Fade(detailColor, 0.3f));
                 }
+                
+                // ----- CABEÇA E CARACTERÍSTICAS FACIAIS -----
+                
+                // Posição da cabeça com leve oscilação baseada no movimento
+                Vector2 headPos = {
+                    position.x + sinf(animTime * moveRate * 0.5f) * radius * 0.1f,
+                    position.y - bodyHeight * 0.55f - (isRunning ? sinf(animTime * moveRate) * radius * 0.1f : 0)
+                };
+                
+                // Tamanho da cabeça varia por tipo
+                float headSize = radius * (type == ENEMY_TYPE_TANK ? 0.65f : 0.7f);
+                
+                // Desenhar cabeça
+                DrawPixelCircle(headPos.x, headPos.y, headSize, faceColor);
+                
+                // Expressão facial (olhos e boca) - muda com estado e tipo
+                float emoteState = (sinf(animTime * 1.5f) > 0.7f) ? 1.0f : 0.0f; // Alternar expressões
+                
+                // Calcular base para olhos
+                float eyeSpacing = headSize * (type == ENEMY_TYPE_TANK ? 0.4f : 0.5f);
+                Vector2 leftEye = {headPos.x - eyeSpacing, headPos.y - headSize * 0.1f};
+                Vector2 rightEye = {headPos.x + eyeSpacing, headPos.y - headSize * 0.1f};
+                
+                // Tamanho dos olhos varia por tipo
+                float eyeSize = headSize * 0.2f;
+                
+                // Sistema de piscar - mais natural e aleatório
+                float blinkRandom = sinf(animTime * 5.0f + randomOffsets[type] * 10.0f);
+                float blinkThreshold = 0.95f; // Pisca 5% do tempo
+                float blinkFactor = (blinkRandom > blinkThreshold) ? 
+                                 (1.0f - (blinkRandom - blinkThreshold) * 20.0f) : 1.0f;
+                blinkFactor = blinkFactor < 0.1f ? 0.1f : blinkFactor;
+                
+                // Sistema de olhar - olhos se movem naturalmente
+                float eyeLook = sinf(animTime * 0.7f + randomOffsets[type]) * 0.3f;
+                float eyeVertical = cosf(animTime * 0.5f) * 0.2f;
+                
+                // Desenhar brancos dos olhos
+                DrawPixelCircle(leftEye.x, leftEye.y, eyeSize, WHITE);
+                DrawPixelCircle(rightEye.x, rightEye.y, eyeSize, WHITE);
+                
+                // Desenhar pupilas com movimento e piscada
+                DrawPixelCircle(
+                    leftEye.x + eyeLook * eyeSize, 
+                    leftEye.y + eyeVertical * eyeSize, 
+                    eyeSize * 0.6f * blinkFactor, 
+                    BLACK
+                );
+                DrawPixelCircle(
+                    rightEye.x + eyeLook * eyeSize, 
+                    rightEye.y + eyeVertical * eyeSize, 
+                    eyeSize * 0.6f * blinkFactor, 
+                    BLACK
+                );
+                
+                // ----- CARACTERÍSTICAS ESPECÍFICAS POR TIPO DE PRIMATA -----
+                
+                if (type == ENEMY_TYPE_TANK) { // GORILA
+                    // Postura característica de gorila - mais curvada e quadrúpede
+                    // Ombros largos e proeminentes
+                    float shoulderWidth = radius * 1.3f;
+                    Vector2 leftShoulder = {
+                        position.x - shoulderWidth * 0.5f,
+                        position.y - radius * 0.3f + sinf(animTime * moveRate) * radius * 0.1f
+                    };
+                    Vector2 rightShoulder = {
+                        position.x + shoulderWidth * 0.5f,
+                        position.y - radius * 0.3f - sinf(animTime * moveRate) * radius * 0.1f
+                    };
+                    
+                    // Braços grossos com articulações
+                    float knuckleHeight = position.y + radius * 0.5f;
+                    
+                    // Braço esquerdo - movimento de caminhar quadrúpede
+                    Vector2 leftElbow = {
+                        leftShoulder.x - radius * 0.3f,
+                        leftShoulder.y + radius * 0.5f + limbSwing * radius * 0.5f
+                    };
+                    Vector2 leftKnuckle = {
+                        leftElbow.x - radius * 0.4f,
+                        knuckleHeight - limbSwing * radius * 0.7f
+                    };
+                    
+                    // Braço direito - movimento alternado
+                    Vector2 rightElbow = {
+                        rightShoulder.x + radius * 0.3f,
+                        rightShoulder.y + radius * 0.5f - limbSwing * radius * 0.5f
+                    };
+                    Vector2 rightKnuckle = {
+                        rightElbow.x + radius * 0.4f,
+                        knuckleHeight + limbSwing * radius * 0.7f
+                    };
+                    
+                    // Desenhar ombros volumosos
+                    DrawPixelCircle(leftShoulder.x, leftShoulder.y, radius * 0.3f, bodyColor);
+                    DrawPixelCircle(rightShoulder.x, rightShoulder.y, radius * 0.3f, bodyColor);
+                    
+                    // Desenhar braços com articulações
+                    DrawPixelLine(leftShoulder.x, leftShoulder.y, leftElbow.x, leftElbow.y, bodyColor);
+                    DrawPixelLine(leftElbow.x, leftElbow.y, leftKnuckle.x, leftKnuckle.y, bodyColor);
+                    DrawPixelCircle(leftElbow.x, leftElbow.y, radius * 0.25f, bodyColor);
+                    DrawPixelCircle(leftKnuckle.x, leftKnuckle.y, radius * 0.3f, bodyColor);
+                    
+                    DrawPixelLine(rightShoulder.x, rightShoulder.y, rightElbow.x, rightElbow.y, bodyColor);
+                    DrawPixelLine(rightElbow.x, rightElbow.y, rightKnuckle.x, rightKnuckle.y, bodyColor);
+                    DrawPixelCircle(rightElbow.x, rightElbow.y, radius * 0.25f, bodyColor);
+                    DrawPixelCircle(rightKnuckle.x, rightKnuckle.y, radius * 0.3f, bodyColor);
+                    
+                    // Rosto característico de gorila
+                    // Testa proeminente
+                    DrawPixelCircle(
+                        headPos.x, 
+                        headPos.y - headSize * 0.3f, 
+                        headSize * 0.7f, 
+                        faceColor
+                    );
+                    
+                    // Sobrancelhas grossas arqueadas
+                    float browAngle = 0.2f + (emoteState * 0.2f); // Varia com expressão
+                    float browWidth = headSize * 0.5f;
+                    
+                    // Sobrancelha esquerda
+                    for (float t = 0.0f; t <= 1.0f; t += 0.2f) {
+                        float x = leftEye.x - browWidth * 0.5f + t * browWidth;
+                        float y = leftEye.y - eyeSize - 3 + sinf(t * PI) * browAngle * 10;
+                        DrawPixelCircle(x, y, 2, detailColor);
+                    }
+                    
+                    // Sobrancelha direita
+                    for (float t = 0.0f; t <= 1.0f; t += 0.2f) {
+                        float x = rightEye.x - browWidth * 0.5f + t * browWidth;
+                        float y = rightEye.y - eyeSize - 3 + sinf(t * PI) * browAngle * 10;
+                        DrawPixelCircle(x, y, 2, detailColor);
+                    }
+                    
+                    // Focinho preto característico
+                    Vector2 muzzlePos = {
+                        headPos.x,
+                        headPos.y + headSize * 0.3f
+                    };
+                    DrawPixelCircle(muzzlePos.x, muzzlePos.y, headSize * 0.6f, Fade(detailColor, 0.8f));
+                    
+                    // Narinas
+                    DrawPixelCircle(muzzlePos.x - headSize * 0.2f, muzzlePos.y, headSize * 0.1f, BLACK);
+                    DrawPixelCircle(muzzlePos.x + headSize * 0.2f, muzzlePos.y, headSize * 0.1f, BLACK);
+                    
+                    // Boca - expressão varia
+                    float mouthOffset = emoteState > 0.5f ? -3 : 3; // Boca para cima ou para baixo
+                    for (float t = 0.2f; t <= 0.8f; t += 0.2f) {
+                        float mouthWidth = headSize * 0.6f;
+                        float x = muzzlePos.x - mouthWidth * 0.5f + t * mouthWidth;
+                        float y = muzzlePos.y + headSize * 0.15f + sinf(t * PI) * mouthOffset;
+                        DrawPixelCircle(x, y, 1.5f, BLACK);
+                    }
+                    
+                    // Animação de bater no peito (mais complexa e realista)
+                    float chestCycle = fmodf(animTime, 6.0f); // Ciclo mais longo
+                    if (chestCycle < 1.2f) {
+                        // Fase de preparação - mãos se levantam
+                        if (chestCycle < 0.3f) {
+                            float t = chestCycle / 0.3f;
+                            float chestX = position.x + sinf(t * PI) * radius * 0.2f;
+                            float chestY = position.y - radius * 0.3f;
+                            
+                            // Reposicionar braços
+                            Vector2 prepLeftHand = {
+                                leftShoulder.x + (chestX - leftShoulder.x) * t,
+                                leftShoulder.y + (chestY - leftShoulder.y) * t
+                            };
+                            Vector2 prepRightHand = {
+                                rightShoulder.x + (chestX - rightShoulder.x) * t,
+                                rightShoulder.y + (chestY - rightShoulder.y) * t
+                            };
+                            
+                            DrawPixelLine(leftShoulder.x, leftShoulder.y, prepLeftHand.x, prepLeftHand.y, bodyColor);
+                            DrawPixelLine(rightShoulder.x, rightShoulder.y, prepRightHand.x, prepRightHand.y, bodyColor);
+                        }
+                        // Fase de batidas no peito
+                        else if (chestCycle < 1.0f) {
+                            // Calcular posição das mãos batendo
+                            float beatPhase = sinf((chestCycle - 0.3f) * 15.0f); // Batidas rápidas
+                            float leftOffset = beatPhase > 0 ? radius * 0.3f : 0;
+                            float rightOffset = beatPhase < 0 ? radius * 0.3f : 0;
+                            
+                            // Mão esquerda
+                            Vector2 leftHand = {
+                                position.x - leftOffset, 
+                                position.y - radius * 0.3f
+                            };
+                            
+                            // Mão direita
+                            Vector2 rightHand = {
+                                position.x + rightOffset, 
+                                position.y - radius * 0.3f
+                            };
+                            
+                            // Desenhar braços
+                            DrawPixelLine(leftShoulder.x, leftShoulder.y, leftHand.x, leftHand.y, bodyColor);
+                            DrawPixelLine(rightShoulder.x, rightShoulder.y, rightHand.x, rightHand.y, bodyColor);
+                            
+                            // Desenhar mãos
+                            DrawPixelCircle(leftHand.x, leftHand.y, radius * 0.25f, bodyColor);
+                            DrawPixelCircle(rightHand.x, rightHand.y, radius * 0.25f, bodyColor);
+                            
+                            // Efeito de impacto no peito
+                            if (fabsf(beatPhase) > 0.8f) {
+                                DrawPixelCircle(
+                                    position.x + (beatPhase > 0 ? -radius * 0.2f : radius * 0.2f), 
+                                    position.y - radius * 0.1f,
+                                    radius * 0.2f * fabsf(beatPhase),
+                                    Fade(WHITE, 0.4f * fabsf(beatPhase))
+                                );
+                            }
+                            
+                            // Expressão facial mais agressiva durante batidas
+                            if (beatPhase > 0.5f) {
+                                DrawPixelCircle(
+                                    headPos.x, 
+                                    headPos.y + headSize * 0.1f,
+                                    headSize * 0.3f * beatPhase,
+                                    Fade(RED, 0.2f * beatPhase)
+                                );
+                            }
+                        }
+                    }
+                }
+                else if (type == ENEMY_TYPE_EXPLODER) { // Babuíno vermelho
+                    // Focinho proeminente
+                    Vector2 snoutPos = {
+                        headPos.x + headSize * 0.2f,
+                        headPos.y + headSize * 0.2f
+                    };
+                    DrawPixelCircle(snoutPos.x, snoutPos.y, headSize * 0.4f, detailColor);
+                    
+                    // Juba/pelo volumoso
+                    for (int i = 0; i < 6; i++) {
+                        float angle = i * PI / 3.0f + animTime * 0.2f;
+                        float dist = headSize * (1.1f + sinf(animTime * 2.0f + i) * 0.1f);
+                        float x = headPos.x + cosf(angle) * dist;
+                        float y = headPos.y + sinf(angle) * dist;
+                        
+                        DrawPixelCircle(x, y, headSize * 0.25f, bodyColor);
+                    }
+                    
+                    // Efeito de "raiva" quando vai explodir
+                    float angerFactor = sinf(animTime * 3.0f);
+                    if (angerFactor > 0.7f) {
+                        DrawPixelCircle(
+                            headPos.x, headPos.y,
+                            headSize * angerFactor * 0.5f,
+                            Fade(RED, angerFactor * 0.3f)
+                        );
+                    }
+                }
+                else if (type == ENEMY_TYPE_SHOOTER) { // CHIMPANZÉ
+                    // Braços mais compridos para arremessar
+                    float armLength = radius * 1.1f;
+                    float shoulderOffset = radius * 0.3f;
+                    
+                    // O braço que atira se estende mais
+                    Vector2 shoulder = {position.x + shoulderOffset, position.y - radius * 0.1f};
+                    Vector2 hand = {
+                        shoulder.x + armLength * cosf(animTime * 2.0f) * 0.5f + armLength * 0.5f,
+                        shoulder.y + armLength * sinf(animTime * 2.0f) * 0.5f
+                    };
+                    
+                    DrawPixelLine(shoulder.x, shoulder.y, hand.x, hand.y, bodyColor);
+                    DrawPixelCircle(hand.x, hand.y, radius * 0.2f, bodyColor);
+                    
+                    // Ocasionalmente mostra um "projétil" na mão
+                    float shootPhase = fmodf(animTime, 3.0f);
+                    if (shootPhase < 1.0f) {
+                        DrawPixelCircle(
+                            hand.x, hand.y,
+                            radius * 0.15f * (1.0f - shootPhase),
+                            YELLOW
+                        );
+                    }
+                    
+                    // Orelhas grandes
+                    DrawPixelCircle(headPos.x - headSize * 0.7f, headPos.y - headSize * 0.3f, 
+                                   headSize * 0.3f, Fade(faceColor, 0.7f));
+                    DrawPixelCircle(headPos.x + headSize * 0.7f, headPos.y - headSize * 0.3f, 
+                                   headSize * 0.3f, Fade(faceColor, 0.7f));
+                }
+                else if (type == ENEMY_TYPE_SPEEDER) { // SAGUI PEQUENO E ÁGIL
+                    // Cauda longa e ondulante
+                    float tailLength = radius * 2.0f;
+                    Vector2 tailBase = {position.x, position.y + radius * 0.6f};
+                    
+                    for (int i = 0; i < 8; i++) {
+                        float t = i / 8.0f;
+                        float waveOffset = sinf(animTime * 3.0f + t * PI * 2) * radius * 0.5f;
+                        
+                        Vector2 tailPoint = {
+                            tailBase.x + waveOffset,
+                            tailBase.y + t * tailLength
+                        };
+                        
+                        DrawPixelCircle(tailPoint.x, tailPoint.y, radius * 0.15f * (1.0f - t * 0.7f), bodyColor);
+                    }
+                    
+                    // Orelhas pontudas
+                    DrawPixelCircle(headPos.x - headSize * 0.5f, headPos.y - headSize * 0.6f, 
+                                   headSize * 0.25f, faceColor);
+                    DrawPixelCircle(headPos.x + headSize * 0.5f, headPos.y - headSize * 0.6f, 
+                                   headSize * 0.25f, faceColor);
+                    
+                    // Efeitode velocidade/movimento
+                    if (Vector2Length(currentEnemy->velocity) > 50.0f) {
+                        Vector2 moveDir = Vector2Normalize(currentEnemy->velocity);
+                        Vector2 trailPos = Vector2Subtract(position, Vector2Scale(moveDir, radius * 1.2f));
+                        
+                        DrawPixelCircle(trailPos.x, trailPos.y, radius * 0.5f, Fade(bodyColor, 0.3f));
+                    }
+                }
+                else { // MACACO COMUM (NORMAL) - Animação mais fluida como no vídeo referência
+                    // Sistema de tempo para diferentes partes da animação
+                    float bounceTime = sinf(animTime * 2.5f) * 0.5f + 0.5f;
+                    // float tailTime = cosf(animTime * 1.8f); // Variável não utilizada
+                    float breathTime = sinf(animTime * 0.7f);
+                    
+                    // Parâmetros escaláveis
+                    float limbLength = radius * 0.8f;
+                    float shoulderOffset = radius * 0.4f;
+                    float bounceHeight = radius * 0.15f * bounceTime;
+                    
+                    // Efeito de pulo/quique - corpo sobe e desce
+                    Vector2 bouncedPosition = {
+                        position.x,
+                        position.y - bounceHeight
+                    };
+                    
+                    // Corpo principal com efeito de respiração
+                    float breathScale = 1.0f + breathTime * 0.1f;
+                    DrawPixelCircle(bouncedPosition.x, bouncedPosition.y, bodyWidth * breathScale, bodyColor);
+                    
+                    // Sombra abaixo do corpo (para efeito de altura)
+                    float shadowSize = bodyWidth * (0.8f - bounceHeight/radius * 0.3f);
+                    DrawPixelCircle(position.x, position.y + radius * 0.1f, shadowSize, Fade(BLACK, 0.2f));
+                    
+                    // Braços com movimento de balanço mais natural
+                    float armAngle1 = -PI/4 + sinf(animTime * 3.5f) * 0.4f;
+                    float armAngle2 = -PI/4 - sinf(animTime * 3.5f) * 0.4f;
+                    
+                    // Braço esquerdo com juntas articuladas
+                    Vector2 shoulder1 = {bouncedPosition.x - shoulderOffset, bouncedPosition.y - radius * 0.1f};
+                    Vector2 elbow1 = {
+                        shoulder1.x + cosf(armAngle1) * limbLength * 0.5f,
+                        shoulder1.y + sinf(armAngle1) * limbLength * 0.5f
+                    };
+                    Vector2 hand1 = {
+                        elbow1.x + cosf(armAngle1 + sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f,
+                        elbow1.y + sinf(armAngle1 + sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f
+                    };
+                    
+                    // Desenhar braço esquerdo
+                    DrawPixelLine(shoulder1.x, shoulder1.y, elbow1.x, elbow1.y, bodyColor);
+                    DrawPixelLine(elbow1.x, elbow1.y, hand1.x, hand1.y, bodyColor);
+                    DrawPixelCircle(elbow1.x, elbow1.y, radius * 0.15f, bodyColor);
+                    DrawPixelCircle(hand1.x, hand1.y, radius * 0.2f, bodyColor);
+                    
+                    // Braço direito com juntas articuladas
+                    Vector2 shoulder2 = {bouncedPosition.x + shoulderOffset, bouncedPosition.y - radius * 0.1f};
+                    Vector2 elbow2 = {
+                        shoulder2.x + cosf(armAngle2) * limbLength * 0.5f,
+                        shoulder2.y + sinf(armAngle2) * limbLength * 0.5f
+                    };
+                    Vector2 hand2 = {
+                        elbow2.x + cosf(armAngle2 - sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f,
+                        elbow2.y + sinf(armAngle2 - sinf(animTime * 2.8f) * 0.3f) * limbLength * 0.5f
+                    };
+                    
+                    // Desenhar braço direito
+                    DrawPixelLine(shoulder2.x, shoulder2.y, elbow2.x, elbow2.y, bodyColor);
+                    DrawPixelLine(elbow2.x, elbow2.y, hand2.x, hand2.y, bodyColor);
+                    DrawPixelCircle(elbow2.x, elbow2.y, radius * 0.15f, bodyColor);
+                    DrawPixelCircle(hand2.x, hand2.y, radius * 0.2f, bodyColor);
+                    
+                    // Pernas com movimento de oscilação oposto ao corpo
+                    float legAngle1 = PI/4 - sinf(animTime * 3.5f) * 0.3f;
+                    float legAngle2 = PI/4 + sinf(animTime * 3.5f) * 0.3f;
+                    
+                    // Perna esquerda
+                    Vector2 hip1 = {bouncedPosition.x - shoulderOffset * 0.7f, bouncedPosition.y + radius * 0.3f};
+                    Vector2 knee1 = {
+                        hip1.x + cosf(legAngle1) * limbLength * 0.5f,
+                        hip1.y + sinf(legAngle1) * limbLength * 0.5f
+                    };
+                    Vector2 foot1 = {
+                        knee1.x + cosf(legAngle1 + sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f,
+                        knee1.y + sinf(legAngle1 + sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f
+                    };
+                    
+                    // Desenhar perna esquerda
+                    DrawPixelLine(hip1.x, hip1.y, knee1.x, knee1.y, bodyColor);
+                    DrawPixelLine(knee1.x, knee1.y, foot1.x, foot1.y, bodyColor);
+                    DrawPixelCircle(knee1.x, knee1.y, radius * 0.15f, bodyColor);
+                    DrawPixelCircle(foot1.x, foot1.y, radius * 0.22f, bodyColor);
+                    
+                    // Perna direita
+                    Vector2 hip2 = {bouncedPosition.x + shoulderOffset * 0.7f, bouncedPosition.y + radius * 0.3f};
+                    Vector2 knee2 = {
+                        hip2.x + cosf(legAngle2) * limbLength * 0.5f,
+                        hip2.y + sinf(legAngle2) * limbLength * 0.5f
+                    };
+                    Vector2 foot2 = {
+                        knee2.x + cosf(legAngle2 - sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f,
+                        knee2.y + sinf(legAngle2 - sinf(animTime * 2.8f + PI) * 0.4f) * limbLength * 0.6f
+                    };
+                    
+                    // Desenhar perna direita
+                    DrawPixelLine(hip2.x, hip2.y, knee2.x, knee2.y, bodyColor);
+                    DrawPixelLine(knee2.x, knee2.y, foot2.x, foot2.y, bodyColor);
+                    DrawPixelCircle(knee2.x, knee2.y, radius * 0.15f, bodyColor);
+                    DrawPixelCircle(foot2.x, foot2.y, radius * 0.22f, bodyColor);
+                    
+                    // Cauda com movimento ondulante mais elaborado
+                    float tailLength = radius * 2.0f;
+                    Vector2 tailBase = {bouncedPosition.x, bouncedPosition.y + radius * 0.4f};
+                    
+                    int tailSegments = 6;
+                    Vector2 prevPoint = tailBase;
+                    
+                    for (int i = 0; i < tailSegments; i++) {
+                        float t = (float)i / (tailSegments - 1);
+                        float waveOffset = sinf(animTime * 3.0f + t * PI * 2) * radius * (0.3f + t * 0.4f);
+                        float segmentLength = tailLength * (1.0f - t) / tailSegments * 1.5f;
+                        
+                        Vector2 tailPoint = {
+                            prevPoint.x + waveOffset,
+                            prevPoint.y + segmentLength
+                        };
+                        
+                        DrawPixelLine(prevPoint.x, prevPoint.y, tailPoint.x, tailPoint.y, bodyColor);
+                        DrawPixelCircle(tailPoint.x, tailPoint.y, radius * 0.15f * (1.0f - t * 0.7f), bodyColor);
+                        
+                        prevPoint = tailPoint;
+                    }
+                    
+                    // Cabeça na posição certa
+                    Vector2 headPos = {
+                        bouncedPosition.x + sinf(animTime * 2.0f) * radius * 0.08f,
+                        bouncedPosition.y - bodyHeight * 0.55f + sinf(animTime * 3.5f) * radius * 0.08f
+                    };
+                    
+                    // Desenhar cabeça
+                    DrawPixelCircle(headPos.x, headPos.y, headSize, faceColor);
+                    
+                    // Expressão mais elaborada - sobrancelhas que se movem
+                    float browRaise = sinf(animTime * 1.2f) * 0.5f + 0.5f;
+                    
+                    // Sobrancelhas
+                    for (int i = -1; i <= 1; i += 2) {
+                        float x = headPos.x + i * eyeSpacing;
+                        float y = headPos.y - headSize * 0.2f - browRaise * headSize * 0.1f;
+                        float width = headSize * 0.25f;
+                        
+                        for (float t = 0; t <= 1.0f; t += 0.2f) {
+                            float px = x - width/2 + t * width;
+                            float py = y + sinf(t * PI) * headSize * 0.05f;
+                            DrawPixelCircle(px, py, 1.5f, detailColor);
+                        }
+                    }
+                    
+                    // Boca mais expressiva que varia conforme o tempo
+                    float mouthOpen = (sinf(animTime * 1.5f) * 0.5f + 0.5f) * 0.7f;
+                    if (mouthOpen > 0.3f) {
+                        // Boca aberta quando o valor de mouthOpen é alto
+                        DrawPixelCircle(headPos.x, headPos.y + headSize * 0.2f, headSize * 0.2f * mouthOpen, Fade(BLACK, 0.7f));
+                    } else {
+                        // Linha para boca fechada
+                        for (float t = 0.3f; t <= 0.7f; t += 0.1f) {
+                            float x = headPos.x - headSize * 0.3f + t * headSize * 0.6f;
+                            float y = headPos.y + headSize * 0.2f + sinf(t * PI) * headSize * 0.05f;
+                            DrawPixelCircle(x, y, 1.0f, BLACK);
+                        }
+                    }
+                }
+                
+                
             }
             currentEnemy = currentEnemy->next;
         }
@@ -128,59 +869,90 @@ void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *
         }
     }
     
-    // Desenhar projéteis dos inimigos como quadrados giratórios
+    // Desenhar projéteis dos inimigos como bananas
     static float enemyBulletRotation = 0.0f;
-    enemyBulletRotation += GetFrameTime() * 3.0f;
+    enemyBulletRotation += GetFrameTime() * 5.0f;
     
     if (enemyBullets) {
         const Bullet *currentBullet = enemyBullets;
         while (currentBullet != NULL) {
             if (currentBullet->active) {
-                // Identificar a origem do projétil para diferenciação
+                // Identificar origem do projétil
                 bool isShooterBullet = false;
-                // Assumimos que projéteis maiores são de Shooters
                 if (currentBullet->radius >= BULLET_RADIUS * 1.2f) {
                     isShooterBullet = true;
                 }
                 
-                // Tamanho base do quadrado
-                float quadSize = currentBullet->radius * 2.0f;
-                // Quadrados de Shooter são maiores
-                if (isShooterBullet) {
-                    quadSize *= 1.4f;
+                Vector2 center = currentBullet->position;
+                float angle = atan2f(currentBullet->velocity.y, currentBullet->velocity.x);
+                
+                // Tamanho da banana
+                float bananaLength = currentBullet->radius * 3.5f;
+                float bananaWidth = currentBullet->radius * 1.5f;
+                
+                // Cor base (amarelo para banana)
+                Color bananaColor = isShooterBullet ? GOLD : YELLOW;
+                Color peelColor = isShooterBullet ? ORANGE : (Color){255, 200, 0, 255};
+                
+                // Desenhar banana com curvatura
+                float segments = 8.0f;
+                Vector2 prev = {0};
+                
+                for (int i = 0; i <= segments; i++) {
+                    float t = i/segments;
+                    float bananaAngle = angle + PI * 0.3f * sinf(t * PI - PI/2);
+                    float dist = bananaLength * t;
+                    
+                    Vector2 point = {
+                        center.x + cosf(bananaAngle) * dist,
+                        center.y + sinf(bananaAngle) * dist
+                    };
+                    
+                    if (i > 0) {
+                        DrawPixelLine(prev.x, prev.y, point.x, point.y, bananaColor);
+                        
+                        // Desenhar largura da banana (casca)
+                        float perpAngle = bananaAngle + PI/2;
+                        float width = bananaWidth * (0.9f - 0.8f * (t - 0.5f) * (t - 0.5f));
+                        
+                        Vector2 top = {
+                            point.x + cosf(perpAngle) * width * 0.5f,
+                            point.y + sinf(perpAngle) * width * 0.5f
+                        };
+                        
+                        Vector2 bottom = {
+                            point.x - cosf(perpAngle) * width * 0.5f,
+                            point.y - sinf(perpAngle) * width * 0.5f
+                        };
+                        
+                        DrawPixelLine(top.x, top.y, bottom.x, bottom.y, peelColor);
+                    }
+                    
+                    // Detalhes das pontas da banana
+                    if (i == 0 || i == segments) {
+                        DrawPixelCircle(point.x, point.y, bananaWidth * 0.3f, peelColor);
+                    }
+                    
+                    prev = point;
                 }
                 
-                // Calcular pontos do quadrado com rotação
-                float angle = enemyBulletRotation;
-                Vector2 center = currentBullet->position;
+                // Adicionar detalhes de manchas na banana
+                for (int i = 0; i < 3; i++) {
+                    float spotAngle = angle + enemyBulletRotation * 0.2f + i * PI * 0.5f;
+                    float spotDist = bananaLength * 0.3f + i * bananaLength * 0.2f;
+                    float spotSize = bananaWidth * 0.15f;
+                    
+                    Vector2 spotPos = {
+                        center.x + cosf(spotAngle) * spotDist,
+                        center.y + sinf(spotAngle) * spotDist
+                    };
+                    
+                    DrawPixelCircle(spotPos.x, spotPos.y, spotSize, BROWN);
+                }
                 
-                // Cor base
-                Color bulletColor = isShooterBullet ? YELLOW : RED;
-                
-                // Desenhar quadrado rotacionado
-                Vector2 p1, p2, p3, p4;
-                p1.x = center.x + cosf(angle) * quadSize/2;
-                p1.y = center.y + sinf(angle) * quadSize/2;
-                
-                p2.x = center.x + cosf(angle + PI/2) * quadSize/2;
-                p2.y = center.y + sinf(angle + PI/2) * quadSize/2;
-                
-                p3.x = center.x + cosf(angle + PI) * quadSize/2;
-                p3.y = center.y + sinf(angle + PI) * quadSize/2;
-                
-                p4.x = center.x + cosf(angle + 3*PI/2) * quadSize/2;
-                p4.y = center.y + sinf(angle + 3*PI/2) * quadSize/2;
-                
-                // Desenhar as linhas do quadrado usando nossa função pixelada
-                DrawPixelLine(p1.x, p1.y, p2.x, p2.y, bulletColor);
-                DrawPixelLine(p2.x, p2.y, p3.x, p3.y, bulletColor);
-                DrawPixelLine(p3.x, p3.y, p4.x, p4.y, bulletColor);
-                DrawPixelLine(p4.x, p4.y, p1.x, p1.y, bulletColor);
-                
-                // Desenhar diagonal cruzada para shooter bullets
+                // Efeito de rotação da banana
                 if (isShooterBullet) {
-                    DrawPixelLine(p1.x, p1.y, p3.x, p3.y, Fade(YELLOW, 0.7f));
-                    DrawPixelLine(p2.x, p2.y, p4.x, p4.y, Fade(YELLOW, 0.7f));
+                    DrawPixelCircle(center.x, center.y, bananaWidth * 0.2f, Fade(WHITE, 0.7f));
                 }
             }
             currentBullet = currentBullet->next;
@@ -637,7 +1409,7 @@ void DrawMinimalistCursor(void) {
     animTime += GetFrameTime() * 2.0f;
     
     // Tamanho maior para o quadrado com efeito de pulsação
-    float baseSize = 18.0f; // Aumentado de 14 para 18
+    float baseSize = 18.0f; 
     float pulseEffect = sinf(animTime) * 1.5f;
     float size = baseSize + pulseEffect;
     

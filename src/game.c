@@ -206,9 +206,20 @@ void HandleCollisions(Game *game) {
                             Enemy* toRemove = currentEnemy;
                             currentEnemy = currentEnemy->next;
 
-                            if (prevEnemy == NULL) game->enemies.head = toRemove->next;
-                            else prevEnemy->next = toRemove->next;
-                            
+                            if (toRemove->prev == NULL) {
+                                // É o primeiro da lista
+                                game->enemies.head = toRemove->next;
+                                if (game->enemies.head != NULL) {
+                                    game->enemies.head->prev = NULL;
+                                }
+                            } else {
+                                // Não é o primeiro
+                                toRemove->prev->next = toRemove->next;
+                                if (toRemove->next != NULL) {
+                                    toRemove->next->prev = toRemove->prev;
+                                }
+                            }
+
                             free(toRemove);
                             game->enemies.count--;
                             

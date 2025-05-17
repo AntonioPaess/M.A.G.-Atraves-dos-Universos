@@ -45,7 +45,16 @@ void AddEnemy(EnemyList *list, Vector2 position, float radius, float speed, Colo
     }
     
     newEnemy->velocity = (Vector2){0,0};
+    
+    // Configurar ponteiros para lista duplamente encadeada
     newEnemy->next = list->head;
+    newEnemy->prev = NULL;
+    
+    // Configurar o ponteiro prev do antigo primeiro nó
+    if (list->head != NULL) {
+        list->head->prev = newEnemy;
+    }
+    
     list->head = newEnemy;
     list->count++;
 }

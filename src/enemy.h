@@ -26,7 +26,8 @@ typedef struct Enemy {
     int health;          // Pontos de vida
     float shootTimer;    // Para inimigos atiradores
     int dodgeCount;      // Para inimigos que desviam
-    struct Enemy *next;
+    struct Enemy *next;  // Próximo inimigo na lista
+    struct Enemy *prev;  // Anterior inimigo na lista (novo campo para lista duplamente encadeada)
 } Enemy;
 
 typedef struct {
