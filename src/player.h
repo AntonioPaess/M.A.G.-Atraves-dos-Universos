@@ -7,6 +7,9 @@
 
 #define INVINCIBILITY_TIME 3.0f  // Tempo de invencibilidade em segundos
 #define BLINK_FREQUENCY 0.1f     // Frequência do piscar em segundos
+#define DASH_DURATION 0.25f      // Duração do dash em segundos
+#define DASH_COOLDOWN 5.0f       // Cooldown entre dashes
+#define DASH_SPEED 800.0f        // Velocidade do dash
 
 typedef struct {
     Vector2 position;
@@ -17,6 +20,14 @@ typedef struct {
     float invincibleTimer;   // Contador para o tempo de invencibilidade
     float blinkTimer;        // Contador para o efeito de piscar
     bool visible;            // Flag para controlar o efeito de piscar
+    bool hasShield;          // Propriedade para o escudo
+    float shieldTimer;       // Tempo de duração do escudo
+    
+    // Novas propriedades para o dash
+    bool isDashing;          // Se o jogador está em estado de dash
+    float dashTimer;         // Quanto tempo resta do dash atual
+    float dashCooldown;      // Tempo até poder usar dash novamente
+    Vector2 dashDirection;   // Direção do dash
 } Player;
 
 void InitPlayer(Player *player, int windowWidth, int windowHeight);

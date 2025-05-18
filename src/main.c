@@ -6,7 +6,7 @@
 
 int main(void) {
     // Inicialização da Janela e Raylib
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "O Clone"); // Novo título
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "M.A.G. O inimigo agora é outro"); // Novo título
     SetTargetFPS(TARGET_FPS);
     // SetExitKey(KEY_NULL); // Desabilitar ESC para fechar se quiser tratar manualmente
 
@@ -18,7 +18,7 @@ int main(void) {
         float deltaTime = GetFrameTime();
 
         // Verificar tecla para alternar modo de tela cheia
-        if (IsKeyPressed(KEY_F11)) { // Usar F11 como padrão para fullscreen
+        if (IsKeyPressed(KEY_H)) {
             AppToggleFullscreen();
         }
 

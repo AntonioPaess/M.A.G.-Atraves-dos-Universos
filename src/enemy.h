@@ -6,6 +6,8 @@
 #include "bullet.h" // Para permitir que inimigos atirem
 #include <stdbool.h>
 
+#define DEATH_ANIMATION_DURATION 0.8f // duração em segundos
+
 // Tipos de inimigos
 typedef enum {
     ENEMY_TYPE_NORMAL,   // Inimigo padrão
@@ -27,7 +29,10 @@ typedef struct Enemy {
     float shootTimer;    // Para inimigos atiradores
     int dodgeCount;      // Para inimigos que desviam
     struct Enemy *next;  // Próximo inimigo na lista
-    struct Enemy *prev;  // Anterior inimigo na lista (novo campo para lista duplamente encadeada)
+    struct Enemy *prev;  // Anterior inimigo na lista
+    
+    bool isDying;        // Flag para indicar que está em animação de morte
+    float deathTimer;    // Tempo decorrido na animação de morte
 } Enemy;
 
 typedef struct {

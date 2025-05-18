@@ -17,12 +17,14 @@ void AddEnemy(EnemyList *list, Vector2 position, float radius, float speed, Colo
     newEnemy->speed = speed;
     newEnemy->active = true;
     newEnemy->type = type;
+    newEnemy->isDying = false;    // Inicializar o novo campo
+    newEnemy->deathTimer = 0.0f;  // Inicializar o timer
     
     // Configurações específicas por tipo
     switch (type) {
         case ENEMY_TYPE_NORMAL:
             newEnemy->color = WHITE;
-            newEnemy->health = 1;
+            newEnemy->health = 2;
             break;
         case ENEMY_TYPE_SPEEDER:
             newEnemy->color = SKYBLUE;
@@ -35,7 +37,7 @@ void AddEnemy(EnemyList *list, Vector2 position, float radius, float speed, Colo
             break;
         case ENEMY_TYPE_EXPLODER:
             newEnemy->color = RED;
-            newEnemy->health = 1;
+            newEnemy->health = 2;
             break;
         case ENEMY_TYPE_SHOOTER:
             newEnemy->color = YELLOW;
@@ -80,11 +82,6 @@ void UpdateShooterEnemy(Enemy *enemy, Vector2 playerPosition, float deltaTime, B
     // Atualizar o timer de tiro independentemente da posição
     enemy->shootTimer += deltaTime;
     
-    // Tentar desviar de projéteis próximos (verificando projéteis do jogador)
-    bool needsToDodge = false;
-    Bullet *playerBullet = *enemyBullets;
-    Vector2 dodgeDirection = {0, 0};
-    
     // Lógica de movimento
     if (distanceToPlayer < 200.0f) {
         // Se estiver muito perto, afasta-se mais rapidamente
@@ -94,6 +91,7 @@ void UpdateShooterEnemy(Enemy *enemy, Vector2 playerPosition, float deltaTime, B
         enemy->velocity = Vector2Scale(Vector2Normalize(directionToPlayer), enemy->speed * 0.8f);
     } else {
         // Se estiver em uma boa distância, move-se lateralmente para dificultar o tiro do jogador
+        
         // Cria um vetor perpendicular à direção do jogador para movimento lateral
         Vector2 sideDirection = {-directionToPlayer.y, directionToPlayer.x};
         sideDirection = Vector2Normalize(sideDirection);
@@ -108,7 +106,7 @@ void UpdateShooterEnemy(Enemy *enemy, Vector2 playerPosition, float deltaTime, B
     }
     
     // Atirar se o timer atingir o limite e estiver a uma distância razoável
-    if (enemy->shootTimer >= 1.0f && distanceToPlayer < 500.0f) { // Reduzido de 2s para 1s
+    if (enemy->shootTimer >= 1.0f && distanceToPlayer < 500.0f) {
         enemy->shootTimer = 0.0f;
         
         // Atirar na direção do jogador com um leve ajuste aleatório para adicionar imperfeição
@@ -132,24 +130,61 @@ void UpdateShooterEnemy(Enemy *enemy, Vector2 playerPosition, float deltaTime, B
     enemy->position.y += enemy->velocity.y * deltaTime;
 }
 
-void UpdateEnemies(EnemyList *list, Vector2 playerPosition, float deltaTime, int screenWidth, int screenHeight, Bullet **playerBullets, Bullet **enemyBullets) {
-    Enemy *current = list->head;
-    while (current != NULL) {
-        if (current->active) {
+void UpdateEnemies(EnemyList *list, Vector2 playerPosition, float deltaTime, 
+                  int screenWidth, int screenHeight, 
+                  Bullet **playerBullets, Bullet **enemyBullets) {
+    Enemy *currentEnemy = list->head;
+    
+    while (currentEnemy != NULL) {
+        Enemy *nextEnemy = currentEnemy->next; // Guardar próximo antes de potencialmente remover
+        
+        if (currentEnemy->active) {
             // Comportamentos específicos por tipo
-            switch (current->type) {
+            switch (currentEnemy->type) {
                 case ENEMY_TYPE_SPEEDER:
                 case ENEMY_TYPE_TANK:
                 case ENEMY_TYPE_NORMAL:
                 case ENEMY_TYPE_EXPLODER:
-                    UpdateNormalEnemy(current, playerPosition, deltaTime);
+                    UpdateNormalEnemy(currentEnemy, playerPosition, deltaTime);
                     break;
                 case ENEMY_TYPE_SHOOTER:
-                    UpdateShooterEnemy(current, playerPosition, deltaTime, enemyBullets);
+                    UpdateShooterEnemy(currentEnemy, playerPosition, deltaTime, enemyBullets);
                     break;
             }
+            
+            // Manter inimigos dentro da tela
+            if (currentEnemy->position.x < 0) currentEnemy->position.x = 0;
+            if (currentEnemy->position.y < 0) currentEnemy->position.y = 0;
+            if (currentEnemy->position.x > screenWidth) currentEnemy->position.x = screenWidth;
+            if (currentEnemy->position.y > screenHeight) currentEnemy->position.y = screenHeight;
         }
-        current = current->next;
+        else if (currentEnemy->isDying) {
+            // Atualizar timer de animação de morte
+            currentEnemy->deathTimer += deltaTime;
+            
+            // Quando a animação terminar, remover o inimigo
+            if (currentEnemy->deathTimer >= DEATH_ANIMATION_DURATION) {
+                // Remover o inimigo da lista
+                if (currentEnemy->prev == NULL) {
+                    // É o primeiro da lista
+                    list->head = currentEnemy->next;
+                    if (list->head != NULL) {
+                        list->head->prev = NULL;
+                    }
+                } else {
+                    // Não é o primeiro
+                    currentEnemy->prev->next = currentEnemy->next;
+                    if (currentEnemy->next != NULL) {
+                        currentEnemy->next->prev = currentEnemy->prev;
+                    }
+                }
+                
+                free(currentEnemy);
+                list->count--;
+            }
+        }
+        
+        currentEnemy = nextEnemy;
     }
 }
 

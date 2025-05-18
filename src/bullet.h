@@ -2,21 +2,23 @@
 #define BULLET_H
 
 #include "raylib.h"
-#include "utils.h" // Para BULLET_RADIUS, BULLET_SPEED
-#include <stdbool.h>
+#include "utils.h" // Adicione este include
 
 typedef struct Bullet {
     Vector2 position;
     Vector2 velocity;
     float radius;
     bool active;
-    Color color;
+    int damage;
+    bool canRicochet;    // Novo: indica se a bala pode ricocheter
+    int ricochetsLeft;   // Novo: número de ricochetes restantes
     struct Bullet *next;
 } Bullet;
 
 void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction);
+void AddBulletWithProps(Bullet **head, Vector2 startPosition, Vector2 direction, float radius, int damage);
+void AddRicochetBullet(Bullet **head, Vector2 startPosition, Vector2 direction); // Nova função
 void UpdateBullets(Bullet **head, float deltaTime, int screenWidth, int screenHeight);
-void DrawBullets(const Bullet *head); // Movido para render.c, mas declaração pode ficar aqui ou em render.h
-void FreeBullets(Bullet **head);
+void DestroyBullets(Bullet **head);
 
 #endif // BULLET_H
