@@ -6,7 +6,8 @@
 #include "enemy.h"
 #include "bullet.h"
 #include "powerup.h" 
-#include "boss.h" // Adicione esta linha
+#include "boss.h" 
+#include "game.h"
 
 // Funções auxiliares de desenho para uso externo
 void DrawPixelRect(float x, float y, float width, float height, Color color);
@@ -21,7 +22,10 @@ void DrawMainMenu(void);
 void DrawMinimalistCursor(void);
 void DrawEnemyDeathAnimation(const Enemy *enemy);
 void DrawTutorialScreen(void);
-void DrawBoss(const Boss *boss); // Adicione esta declaração
-void DrawPauseMenu(void); // Adicione esta linha
+void DrawBoss(const Boss *boss);
+void DrawPauseMenu(void);
+void DrawGameSummary(long score, int kills, float gameTime);
+void RenderScoreboardScreen(void);
+void DrawNameEntryScreen(Game *game);
 
 #endif // RENDER_H

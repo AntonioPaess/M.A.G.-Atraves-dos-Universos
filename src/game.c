@@ -7,7 +7,11 @@
 #include "bullet.h"
 #include "audio.h"
 #include "render.h"
+#include "scoreboard.h"
 #include <stdlib.h>
+#include <string.h> 
+#include <stdio.h>
+#include "narrative_text.h"
 
 // Declarar acesso às variáveis externas definidas em utils.c
 extern float currentPlayAreaRadius;
@@ -75,6 +79,10 @@ void ResetGame(Game *game) {
     game->enemiesKilledSinceBoss = 0;
     game->showBossMessage = false;
     game->bossMessageTimer = 0.0f;
+
+    // Resetar tempo de jogo
+    game->gameTime = 0.0f;
+    game->showGameSummary = false;
 }
 
 void UpdateDifficulty(Game *game, float deltaTime) {
@@ -365,6 +373,14 @@ void HandleCollisions(Game *game) {
                             // Incrementar contador de inimigos mortos
                             game->enemiesKilled++;
                             
+                            // Mostrar mensagem motivacional a cada 10 kills
+                            if (game->enemiesKilled % 10 == 0 && game->enemiesKilled > 0) {
+                                const char* milestoneText = GetKillMilestoneText();
+                                ShowScreenText(milestoneText, 
+                                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 50}, 
+                                              25, GOLD, 3.0f, true);
+                            }
+                            
                             // Incrementar contador para spawn do boss
                             game->enemiesKilledSinceBoss++;
 
@@ -387,8 +403,14 @@ void HandleCollisions(Game *game) {
                                 game->showBossMessage = true;
                                 game->bossMessageTimer = 0.0f;
                                 
+                                // Texto narrativo para a aparição do boss
+                                const char* bossAppearText = GetBossAppearText();
+                                ShowScreenText(bossAppearText, 
+                                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
+                                              30, RED, 3.0f, true);
+                                
                                 // Som especial para o boss
-                                PlayGameSound(game->enemyExplodeSound); // Ou um som específico para o boss
+                                PlayGameSound(game->enemyExplodeSound);
                             }
 
                             // Verificar se atingiu um milestone para poder spawnar power-ups
@@ -465,6 +487,12 @@ void HandleCollisions(Game *game) {
                     if (!game->boss.active) {
                         game->bossActive = false;
                         game->score += 4000; // Pontuação final por derrotar completamente o boss
+                        
+                        // Texto narrativo para a derrota do boss
+                        const char* bossDefeatText = GetBossDefeatText();
+                        ShowScreenText(bossDefeatText, 
+                                      (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
+                                      30, RED, 4.0f, true);
                     } 
                     else if (game->boss.isTransitioning) {
                         // Conceder pontos conforme a camada destruída
@@ -495,7 +523,15 @@ void HandleCollisions(Game *game) {
                     PlayGameSound(game->playerExplodeSound);
                     game->player.lives--;
                     
+                    // Mostrar onomatopeia de dano
+                    const char* damageText = GetDamageText();
+                    ShowScreenText(damageText, 
+                                  (Vector2){game->player.position.x, game->player.position.y - 30}, 
+                                  30, RED, 1.0f, true);
+                    
                     if (game->player.lives <= 0) {
+                        // Ativar a tela de resumo antes do game over
+                        game->showGameSummary = true;
                         game->currentState = GAME_STATE_GAME_OVER;
                         return;
                     } else {
@@ -539,8 +575,15 @@ void HandleCollisions(Game *game) {
                     // Reduzir vida
                     game->player.lives--;
                     
+                    // Mostrar onomatopeia de dano
+                    const char* damageText = GetDamageText();
+                    ShowScreenText(damageText, 
+                                  (Vector2){game->player.position.x, game->player.position.y - 30}, 
+                                  30, RED, 1.0f, true);
+                    
                     if (game->player.lives <= 0) {
-                        // Game over se não tiver mais vidas
+                        // Ativar a tela de resumo antes do game over
+                        game->showGameSummary = true;
                         game->currentState = GAME_STATE_GAME_OVER;
                         return;
                     } else {
@@ -605,8 +648,15 @@ void HandleCollisions(Game *game) {
                     // Reduzir vida
                     game->player.lives--;
                     
+                    // Mostrar onomatopeia de dano
+                    const char* damageText = GetDamageText();
+                    ShowScreenText(damageText, 
+                                  (Vector2){game->player.position.x, game->player.position.y - 30}, 
+                                  30, RED, 1.0f, true);
+                    
                     if (game->player.lives <= 0) {
-                        // Game over se não tiver mais vidas
+                        // Ativar a tela de resumo antes do game over
+                        game->showGameSummary = true;
                         game->currentState = GAME_STATE_GAME_OVER;
                         return;
                     } else {
@@ -673,16 +723,29 @@ void InitGame(Game *game) {
     game->enemiesKilledSinceBoss = 0;
     game->showBossMessage = false;
     game->bossMessageTimer = 0.0f;
+
+    // Inicializar scoreboard
+    InitScoreboard();
+    
+    // Inicializar campos para entrada de nome
+    memset(game->playerName, 0, MAX_NAME_LENGTH);
+    game->nameLength = 0;
+    game->isHighScore = false;
+
+    // Inicializar tempo de jogo
+    game->gameTime = 0.0f;
+    game->showGameSummary = false;
+    game->currentSortType = SORT_BY_SCORE;
+
+    InitNarrativeText();
 }
 
 void UpdateGame(Game *game, float deltaTime) {
-    UpdateGameMusicStream(game->backgroundMusic);
-
     switch (game->currentState) {
         case GAME_STATE_MAIN_MENU:
             // Mostrar cursor normal no menu
             ShowCursor();
-            // Modificar para ir para o tutorial em vez do jogo diretamente
+            // Modificar para ir para a tela de história em vez do tutorial
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
                 IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || 
                 IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON) || 
@@ -690,7 +753,7 @@ void UpdateGame(Game *game, float deltaTime) {
                 IsKeyPressed(KEY_ENTER) ||
                 GetKeyPressed() != 0) {
                 
-                // Ir para o tutorial em vez do jogo diretamente
+                // Ir diretamente para o tutorial
                 game->currentState = GAME_STATE_TUTORIAL;
             }
             break;
@@ -707,6 +770,21 @@ void UpdateGame(Game *game, float deltaTime) {
             break;
             
         case GAME_STATE_PLAYING:
+            // Verificar se acabou de entrar no estado PLAYING (para mostrar texto de intro)
+            {
+                static GameState previousState = GAME_STATE_MAIN_MENU;
+                if (previousState != GAME_STATE_PLAYING) {
+                    const char* introText = GetIntroText();
+                    ShowScreenText(introText, 
+                                  (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 100}, 
+                                  25, WHITE, 5.0f, true);
+                }
+                previousState = game->currentState;
+            }
+            
+            // Atualizar tempo de jogo
+            game->gameTime += deltaTime;
+            
             // Esconder cursor durante o jogo
             HideCursor();
             
@@ -772,6 +850,22 @@ void UpdateGame(Game *game, float deltaTime) {
                     game->showBossMessage = false;
                 }
             }
+            
+            // Chance aleatória de mostrar piada (aproximadamente a cada 30 segundos)
+            if (GetRandomValue(0, 1800) == 1) { // Com 60 FPS, isso dá ~1/30 chance por segundo
+                const char* jokeText = GetRandomJokeText();
+                ShowScreenText(jokeText, 
+                             (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 + 100}, 
+                             22, SKYBLUE, 4.0f, true);
+            }
+            
+            // Adicionar em game.c, quando o jogador está com pouca vida (1 vida restante):
+            if (game->player.lives == 1 && GetRandomValue(0, 600) == 0) { // Raramente quando está com 1 vida
+                const char* wisdomText = GetCosmicWisdomText();
+                ShowScreenText(wisdomText, 
+                              (Vector2){GetScreenWidth()/2, 100}, 
+                              24, PURPLE, 5.0f, true);
+            }
             break;
 
         case GAME_STATE_PAUSED:
@@ -796,71 +890,157 @@ void UpdateGame(Game *game, float deltaTime) {
             break;
 
         case GAME_STATE_GAME_OVER:
-            // Mostrar cursor normal na tela de game over
+            // Mostrar cursor
             ShowCursor();
+            
+            // Comportamento unificado para ambas as telas (resumo e game over normal)
             if (IsKeyPressed(KEY_R)) {
                 ResetGame(game);
+                game->currentState = GAME_STATE_PLAYING;
+            } else if (IsKeyPressed(KEY_S)) {
+                // Ir para tela de entrada de nome se pressionar S
+                game->currentState = GAME_STATE_ENTER_NAME;
+                memset(game->playerName, 0, MAX_NAME_LENGTH);
+                game->nameLength = 0;
+            } else if (IsKeyPressed(KEY_M)) {
+                // Ir para o menu principal
+                game->currentState = GAME_STATE_MAIN_MENU;
             }
-            // Opção para voltar ao menu principal
+            // Se ainda está no resumo, oferecer a opção de pular para a tela de game over
+            else if (game->showGameSummary && 
+                    (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || 
+                     IsMouseButtonPressed(MOUSE_LEFT_BUTTON))) {
+                game->showGameSummary = false;
+            }
+            break;
+            
+        case GAME_STATE_ENTER_NAME: {
+            // Capturar entrada de texto para o nome do jogador
+            int key = GetCharPressed();
+            
+            // Processo de entrada de texto (caractere por caractere)
+            while (key > 0) {
+                // Somente aceitar caracteres válidos (alfanuméricos e alguns símbolos)
+                if ((key >= 32) && (key <= 125) && (game->nameLength < MAX_NAME_LENGTH - 1)) {
+                    game->playerName[game->nameLength] = (char)key;
+                    game->playerName[game->nameLength + 1] = '\0'; // Garantir final de string
+                    game->nameLength++;
+                }
+                
+                key = GetCharPressed(); // Verificar próximo caractere
+            }
+            
+            // Permitir apagar caracteres com backspace
+            if (IsKeyPressed(KEY_BACKSPACE) && game->nameLength > 0) {
+                game->nameLength--;
+                game->playerName[game->nameLength] = '\0';
+            }
+            
+            // Submeter nome quando ENTER for pressionado
+            if (IsKeyPressed(KEY_ENTER) && game->nameLength > 0) {
+                // Adicionar a pontuação ao scoreboard
+                AddScore(game->playerName, game->score, game->enemiesKilled, game->gameTime);
+                SaveScoreboard(); // Salvar no arquivo
+                
+                // Mudar para a tela de scoreboard
+                game->currentState = GAME_STATE_SCOREBOARD;
+            }
+            
+            // Deixe o código de renderização atual (DrawRectangle, etc.)
+            // Ele será chamado pela função DrawNameEntryScreen no DrawGame
+            break;
+        }
+            
+        case GAME_STATE_SCOREBOARD:
+            // Mostrar cursor
+            ShowCursor();
+            
+            // Verificar tecla para voltar ao menu principal
             if (IsKeyPressed(KEY_M)) {
                 game->currentState = GAME_STATE_MAIN_MENU;
             }
+            
+            // O código existente de desenho será chamado na função DrawGame
             break;
     }
+
+    // Atualizar textos na tela
+    UpdateScreenTexts(deltaTime);
 }
 
-// Apenas a função DrawGame
-void DrawGame(const Game *game) {
+void DrawGame(Game *game) {
+    // Desenhar o jogo com base no estado atual
     switch (game->currentState) {
         case GAME_STATE_MAIN_MENU:
             DrawMainMenu();
+            DrawMinimalistCursor(); // Cursor personalizado
             break;
             
         case GAME_STATE_TUTORIAL:
             DrawTutorialScreen();
+            DrawMinimalistCursor(); // Cursor personalizado
             break;
             
         case GAME_STATE_PLAYING:
-            // Desenhar gameplay normal
-            DrawGameplay(&game->player, &game->enemies, game->bullets, game->enemyBullets, game->powerups, game->score);
+            // Desenhar gameplay (jogo em andamento)
+            DrawGameplay(&game->player, &game->enemies, game->bullets, 
+                         game->enemyBullets, game->powerups, game->score);
             
-            // Desenhar boss se ativo
+            // Desenhar o boss se estiver ativo
             if (game->bossActive && game->boss.active) {
                 DrawBoss(&game->boss);
             }
             
-            // Mostrar mensagem do boss se necessário
+            // Desenhar mensagem do boss se necessário
             if (game->showBossMessage) {
-                float alpha = fminf(1.0f, game->bossMessageTimer) * 
-                            fminf(1.0f, (3.0f - game->bossMessageTimer));
-                
-                const char *message = "BOSS APPROACHING";
-                int fontSize = 60;
+                const char *message = "BOSS APARECEU!";
+                int fontSize = 40;
                 int textWidth = MeasureText(message, fontSize);
                 
+                // Centralizar texto com fundo semi-transparente
+                DrawRectangle(GetScreenWidth()/2 - textWidth/2 - 20, 
+                              GetScreenHeight()/2 - fontSize/2 - 20,
+                              textWidth + 40, 
+                              fontSize + 40, 
+                              Fade(BLACK, 0.7f));
+                              
                 DrawText(message, 
-                        GetScreenWidth()/2 - textWidth/2, 
-                        GetScreenHeight()/2 - fontSize/2, 
-                        fontSize, 
-                        Fade(RED, alpha));
+                         GetScreenWidth()/2 - textWidth/2, 
+                         GetScreenHeight()/2 - fontSize/2, 
+                         fontSize, RED);
             }
+            // Desenhar textos narrativos
+            DrawScreenTexts();
             break;
             
         case GAME_STATE_PAUSED:
-            // Primeiro desenhar o jogo normalmente
-            DrawGameplay(&game->player, &game->enemies, game->bullets, game->enemyBullets, game->powerups, game->score);
+            // Desenhar o jogo em pausa (mesmos elementos do gameplay, mas com menu de pausa)
+            DrawGameplay(&game->player, &game->enemies, game->bullets, 
+                         game->enemyBullets, game->powerups, game->score);
             
-            // Desenhar boss se ativo
-            if (game->bossActive && game->boss.active) {
-                DrawBoss(&game->boss);
-            }
-            
-            // Depois desenhar o menu de pausa por cima
+            // Sobrepor o menu de pausa
             DrawPauseMenu();
+            DrawMinimalistCursor(); // Cursor personalizado
             break;
             
         case GAME_STATE_GAME_OVER:
-            DrawGameOverScreen(game->score);
+            if (game->showGameSummary) {
+                // Mostrar primeiro o resumo da partida
+                DrawGameSummary(game->score, game->enemiesKilled, game->gameTime);
+            } else {
+                // Depois mostrar a tela de game over comum
+                DrawGameOverScreen(game->score);
+            }
+            DrawMinimalistCursor(); // Cursor personalizado
+            break;
+            
+        case GAME_STATE_ENTER_NAME:
+            DrawNameEntryScreen(game);
+            break;
+            
+        case GAME_STATE_SCOREBOARD:
+            RenderScoreboardScreen();
+            DrawMinimalistCursor(); // Cursor personalizado
             break;
     }
 }

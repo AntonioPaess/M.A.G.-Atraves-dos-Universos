@@ -1,9 +1,12 @@
 #include "render.h"
 #include "raylib.h"
 #include "raymath.h"
-#include "powerup.h" // Adicione esta linha
+#include "powerup.h"
+#include "game.h" 
+#include "scoreboard.h" // Este include é crucial para acessar FormatTime
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 // Estrutura para gerenciar explosões
 typedef struct {
@@ -28,6 +31,10 @@ void DrawPixelText(const char *text, int posX, int posY, int fontSize, Color col
 void DrawPixelRect(float x, float y, float width, float height, Color color);
 void DrawMinimalistCursor(void);
 void DrawPlayAreaBorder(void);  // Nova declaração adicionada aqui
+
+// Declare acesso às variáveis e funções externas do scoreboard
+extern ScoreEntry GetScoreAt(int index);
+extern int GetScoreCount(void);
 
 // Função auxiliar para desenhar linhas pixeladas (escopo de arquivo)
 void DrawPixelLine(float x1, float y1, float x2, float y2, Color color) {
@@ -526,133 +533,6 @@ void DrawMainMenu(void) {
     // Cursor minimalista
     DrawMinimalistCursor();
 }
-
-// Game over com efeitos de explosão e animações
-void DrawGameOverScreen(long finalScore) {
-    ClearBackground(BLACK);
-    
-    // Controle de animação
-    static float animTime = 0.0f;
-    static float explosionRadius = 0.0f;
-    static float scoreCounter = 0.0f;
-    static bool animInit = false;
-    
-    // Inicializar animação
-    if (!animInit) {
-        animTime = 0.0f;
-        explosionRadius = 0.0f;
-        scoreCounter = 0.0f;
-        animInit = true;
-    }
-    
-    // Atualizar contadores com incremento menor
-    animTime += GetFrameTime() * 0.8f; // Reduzido para menor carga de CPU
-    
-    // Efeito de explosão pixelada expandindo do centro (simplificado)
-    if (explosionRadius < GetScreenWidth() * 1.2f) {
-        explosionRadius = GetScreenWidth() * (1.0f - expf(-animTime * 2.0f));
-    }
-    
-    // Contador animado da pontuação (simplificado)
-    if (scoreCounter < finalScore) {
-        scoreCounter = fminf(finalScore, scoreCounter + finalScore * GetFrameTime() * 1.5f);
-    }
-    
-    // Desenhar ondas de explosão (reduzido de 3 para 1)
-    float waveTime = animTime;
-    float waveRadius = explosionRadius * 0.8f;
-    float alpha = expf(-waveTime * 1.2f) * 0.4f;
-    
-    DrawPixelCircle(
-        GetScreenWidth() / 2,
-        GetScreenHeight() / 2,
-        waveRadius,
-        Fade(RED, alpha)
-    );
-    
-    // Partículas espalhadas (reduzido de 40 para 15)
-    for (int i = 0; i < 15; i++) {
-        float angle = i * 24.0f; // Maior espaçamento
-        float speed = 50.0f + (i % 3) * 25.0f; // Menos variações
-        float distance = animTime * speed;
-        
-        if (distance < GetScreenWidth()) {
-            float x = GetScreenWidth()/2 + cosf(angle * DEG2RAD) * distance;
-            float y = GetScreenHeight()/2 + sinf(angle * DEG2RAD) * distance;
-            
-            // Simplificados
-            float size = 4.0f;
-            float alpha = 0.8f - distance / GetScreenWidth();
-            
-            DrawPixelCircle(x, y, size, Fade((i % 2 == 0) ? RED : WHITE, alpha));
-        }
-    }
-
-    // Texto "GAME OVER" com efeito de shake simplificado
-    const char* gameOverText = "GAME OVER";
-    int gameOverWidth = MeasureText(gameOverText, 80);
-    
-    // Efeito de tremor reduzido
-    float shakeAmount = 5.0f * expf(-animTime * 2.0f);
-    float offsetX = sinf(animTime * 10.0f) * shakeAmount; // Frequência reduzida
-    float offsetY = cosf(animTime * 12.0f) * shakeAmount;
-    
-    // Remover camadas de glow e usar apenas uma
-    DrawText(gameOverText, 
-            GetScreenWidth()/2 - gameOverWidth/2 + offsetX - 4, 
-            GetScreenHeight()/3 + offsetY - 4, 
-            80, 
-            Fade(RED, 0.2f));
-    
-    // Texto principal
-    DrawText(gameOverText, 
-            GetScreenWidth()/2 - gameOverWidth/2 + offsetX, 
-            GetScreenHeight()/3 + offsetY, 
-            80, 
-            WHITE); // Simplificado sem fade dinâmico
-
-    // Pontuação - texto único sem efeitos de glow
-    const char* scoreText = TextFormat("%ld", (long)scoreCounter);
-    int scoreWidth = MeasureText(scoreText, 100);
-    
-    DrawText(scoreText, 
-            GetScreenWidth()/2 - scoreWidth/2, 
-            GetScreenHeight()/2, 
-            100, 
-            WHITE);
-
-    // Instruções com efeito pulsante simplificado
-    const char* restartText = "PRESS R TO RESTART";
-    float restartPulse = 0.6f + sinf(animTime * 2.0f) * 0.4f; // Frequência reduzida
-    
-    if (animTime > 1.0f) {
-        DrawText(restartText, 
-                GetScreenWidth()/2 - MeasureText(restartText, 24)/2, 
-                GetScreenHeight() - 140, // Ajustado para cima para dar espaço
-                24, 
-                Fade(RED, restartPulse));
-                
-        // Nova opção para voltar ao menu principal
-        const char* menuText = "PRESS M FOR MAIN MENU";
-        float menuPulse = 0.6f + sinf(animTime * 2.0f + 0.5f) * 0.4f; // Pulso ligeiramente fora de fase
-        
-        DrawText(menuText, 
-                GetScreenWidth()/2 - MeasureText(menuText, 24)/2, 
-                GetScreenHeight() - 100, 
-                24, 
-                Fade(WHITE, menuPulse));
-    }
-
-    // Cursor minimalista
-    DrawMinimalistCursor();
-    
-    // Resetar a animação se a tela for trocada
-    if (IsKeyPressed(KEY_R)) {
-        animInit = false;
-    }
-}
-
-
 
 
 
@@ -1205,7 +1085,7 @@ void DrawTutorialScreen(void) {
     // Variáveis de animação
     static float animTime = 0.0f;
     animTime += GetFrameTime();
-    float pulse = 0.7f + sinf(animTime * 3.0f) * 0.3f;
+    float pulse = 0.7f + sinf(animTime * 1.5f) * 0.2f;
     
     // Título com efeito de pulsação
     const char *title = "TUTORIAL";
@@ -1225,7 +1105,7 @@ void DrawTutorialScreen(void) {
     int sectionSpacing = 30;
     int currentY = startY;
     Color titleColor = RED;
-    Color textColor = WHITE;
+    Color textColor = WHITE; // Usado para os textos informativos
     
     // ----- SEÇÃO DE CONTROLES -----
     DrawText("CONTROLES", GetScreenWidth()/2 - MeasureText("CONTROLES", 30)/2, currentY, 30, titleColor);
@@ -1308,6 +1188,64 @@ void DrawTutorialScreen(void) {
     DrawMinimalistCursor();
 }
 
+// Game Over Screen aprimorada com animações e efeitos visuais
+void DrawGameOverScreen(long finalScore) {
+    // Fundo preto com transparência
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.9f));
+    
+    // Variáveis de animação
+    static float animTime = 0.0f;
+    animTime += GetFrameTime();
+    
+    // Título "GAME OVER" com efeito de pulsação
+    const char *title = "GAME OVER";
+    int titleWidth = MeasureText(title, 60);
+    float titlePulse = 1.0f + sinf(animTime * 3.0f) * 0.1f;
+    DrawText(title, 
+             GetScreenWidth()/2 - titleWidth/2, 
+             GetScreenHeight()/2 - 100, 
+             60, 
+             Fade(RED, titlePulse));
+    
+    // Mensagem de pontuação final
+    char scoreText[100];
+    sprintf(scoreText, "Pontuação final: %ld", finalScore);
+    DrawText(scoreText, GetScreenWidth()/2 - MeasureText(scoreText, 30)/2, 
+             GetScreenHeight()/2 - 30, 30, WHITE);
+    
+    // Instruções com efeito de digitação
+    const char *restartText = "Pressione R para reiniciar";
+    const char *menuText = "Pressione M para voltar ao menu";
+    
+    // Efeito de digitação para as instruções
+    for (int i = 0; i < 2; i++) {
+        const char *text = (i == 0) ? restartText : menuText;
+        float textAnim = animTime + i * 0.5f; // Desfasar animação
+        int textAlpha = (int)(sinf(textAnim * 6.0f) * 127.0f + 128.0f);
+        Color textColor = (i == 0) ? GREEN : WHITE;
+        
+        // Desenhar texto com efeito de digitação
+        DrawText(text, 
+                 GetScreenWidth()/2 - MeasureText(text, 20)/2, 
+                 GetScreenHeight()/2 + 40 + i * 30, 
+                 20, 
+                 Fade(textColor, textAlpha / 255.0f));
+    }
+    
+    // Partículas de explosão sutis no fundo
+    for (int i = 0; i < 20; i++) {
+        float x = GetRandomValue(0, GetScreenWidth());
+        float y = GetRandomValue(0, GetScreenHeight());
+        float size = GetRandomValue(2, 4);
+        Color particleColor = Fade(RED, GetRandomValue(50, 100) / 255.0f);
+        
+        DrawPixelCircle(x, y, size, particleColor);
+    }
+    
+    // Cursor minimalista
+    DrawMinimalistCursor();
+}
+
 // Função para desenhar o menu de pausa
 void DrawPauseMenu(void) {
     // Desenhar o jogo escurecido ao fundo
@@ -1363,5 +1301,244 @@ void DrawPauseMenu(void) {
     DrawPlayAreaBorder();
     
     // Cursor minimalista
+    DrawMinimalistCursor();
+}
+
+// Função para desenhar o resumo do jogo após o fim de uma partida
+void DrawGameSummary(long score, int kills, float gameTime) {
+    // Fundo preto
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+    
+    // Adicionar a borda estilizada como efeito visual
+    DrawPlayAreaBorder();
+
+    // Título centralizado
+    const char *title = "RESUMO DA PARTIDA";
+    DrawText(title, 
+             GetScreenWidth()/2 - MeasureText(title, 40)/2, 
+             GetScreenHeight()/5, 
+             40, 
+             WHITE);
+    
+    // Calcular posições para alinhar os textos
+    int centerX = GetScreenWidth()/2;
+    int startY = GetScreenHeight()/3;
+    int lineHeight = 40;
+    
+    // Pontuação
+    char scoreText[64];
+    sprintf(scoreText, "PONTUAÇÃO: %ld", score);
+    DrawText(scoreText, 
+             centerX - MeasureText(scoreText, 30)/2, 
+             startY, 
+             30, 
+             RED);
+    
+    // Inimigos eliminados
+    char killsText[64];
+    sprintf(killsText, "INIMIGOS ELIMINADOS: %d", kills);
+    DrawText(killsText, 
+             centerX - MeasureText(killsText, 30)/2, 
+             startY + lineHeight, 
+             30, 
+             WHITE);
+    
+    // Tempo de jogo
+    char timeText[64];
+    sprintf(timeText, "TEMPO DE JOGO: %s", FormatTime(gameTime));
+    DrawText(timeText, 
+             centerX - MeasureText(timeText, 30)/2, 
+             startY + 2 * lineHeight, 
+             30, 
+             WHITE);
+    
+    // Instruções
+    DrawText("Pressione R para jogar novamente", 
+             centerX - MeasureText("Pressione R para jogar novamente", 20)/2, 
+             startY + 4 * lineHeight, 
+             20, 
+             GRAY);
+    
+    DrawText("Pressione S para salvar no ranking", 
+             centerX - MeasureText("Pressione S para salvar no ranking", 20)/2, 
+             startY + 5 * lineHeight, 
+             20, 
+             GRAY);
+    
+    DrawText("Pressione M para voltar ao menu", 
+             centerX - MeasureText("Pressione M para voltar ao menu", 20)/2, 
+             startY + 6 * lineHeight, 
+             20, 
+             GRAY);
+    
+    // Cursor personalizado
+    DrawMinimalistCursor();
+}
+
+void DrawNameEntryScreen(Game *game) {
+    // Fundo preto com gradiente sutil
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+    
+    // Adicionar a borda estilizada como efeito visual
+    DrawPlayAreaBorder();
+
+    // Título com efeito de pulsação
+    static float animTime = 0.0f;
+    animTime += GetFrameTime();
+    float pulse = 0.8f + sinf(animTime * 2.5f) * 0.2f;
+
+    const char *title = "NOVO RECORDE!";
+    int titleFontSize = 50;
+    int titleY = GetScreenHeight() * 0.1f;
+    DrawText(title, 
+             GetScreenWidth()/2 - MeasureText(title, titleFontSize)/2, 
+             titleY, 
+             titleFontSize, 
+             Fade(RED, pulse));
+
+    // Subtítulo
+    const char *subtitle = "Digite seu nome para o ranking";
+    int subtitleFontSize = 25;
+    int subtitleY = titleY + titleFontSize + 15;
+    DrawText(subtitle,
+             GetScreenWidth()/2 - MeasureText(subtitle, subtitleFontSize)/2,
+             subtitleY,
+             subtitleFontSize,
+             WHITE);
+
+    // Caixa de entrada
+    int boxWidth = 500;
+    int boxHeight = 60;
+    int boxX = GetScreenWidth()/2 - boxWidth/2;
+    int boxY = subtitleY + 60;
+
+    // Caixa com borda pulsante
+    DrawRectangle(boxX, boxY, boxWidth, boxHeight, Fade(DARKGRAY, 0.7f));
+    DrawRectangleLinesEx((Rectangle){boxX, boxY, boxWidth, boxHeight}, 
+                         3, Fade(RED, pulse));
+
+    // Nome digitado na caixa
+    int nameFontSize = 35;
+    DrawText(game->playerName, 
+             boxX + 20, 
+             boxY + (boxHeight - nameFontSize)/2, 
+             nameFontSize, 
+             WHITE);
+
+    // Cursor piscante
+    int nameWidth = MeasureText(game->playerName, nameFontSize);
+    if ((int)(GetTime() * 2) % 2 == 0) {
+        DrawText("|", 
+                 boxX + 20 + nameWidth, 
+                 boxY + (boxHeight - nameFontSize)/2, 
+                 nameFontSize, 
+                 WHITE);
+    }
+
+    // Pontuação
+    char scoreText[64];
+    sprintf(scoreText, "PONTUAÇÃO: %ld", game->score);
+    int scoreFontSize = 30;
+    int scoreY = boxY + boxHeight + 40;
+    DrawText(scoreText, 
+             GetScreenWidth()/2 - MeasureText(scoreText, scoreFontSize)/2, 
+             scoreY, 
+             scoreFontSize, 
+             RED);
+    
+    // Estatísticas adicionais
+    char statsText[100];
+    sprintf(statsText, "Inimigos eliminados: %d | Tempo de jogo: %s", 
+            game->enemiesKilled, FormatTime(game->gameTime));
+    int statsY = scoreY + scoreFontSize + 20;
+    DrawText(statsText, 
+             GetScreenWidth()/2 - MeasureText(statsText, 20)/2, 
+             statsY, 
+             20, 
+             GRAY);
+
+    // Instruções com efeito pulsante
+    const char *instruction = "Pressione ENTER para confirmar";
+    DrawText(instruction, 
+             GetScreenWidth()/2 - MeasureText(instruction, 25)/2,
+             GetScreenHeight() - 80, 
+             25, 
+             Fade(RED, 0.5f + sinf(animTime * 4) * 0.5f));
+
+    // Cursor personalizado
+    DrawMinimalistCursor();
+}
+
+void RenderScoreboardScreen(void) {
+    // Fundo preto
+    DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), BLACK);
+    
+    // Adicionar a borda estilizada como efeito visual
+    DrawPlayAreaBorder();
+    
+    // Título centralizado
+    const char *title = "MELHORES PONTUAÇÕES";
+    DrawText(title, 
+             GetScreenWidth()/2 - MeasureText(title, 40)/2, 
+             50, 
+             40, 
+             WHITE);
+    
+    // Cabeçalho das colunas
+    int columnHeaderY = 120;
+    DrawText("POSIÇÃO", GetScreenWidth()/2 - 250, columnHeaderY, 20, GRAY);
+    DrawText("NOME", GetScreenWidth()/2 - 100, columnHeaderY, 20, GRAY);
+    DrawText("PONTUAÇÃO", GetScreenWidth()/2 + 100, columnHeaderY, 20, GRAY);
+    
+    // Linha divisória
+    DrawLine(GetScreenWidth()/2 - 300, columnHeaderY + 30, 
+             GetScreenWidth()/2 + 300, columnHeaderY + 30, 
+             Fade(GRAY, 0.5));
+    
+    // Listar pontuações
+    int startY = columnHeaderY + 50;
+    int entryHeight = 40;
+    
+    int scoreCount = GetScoreCount();
+    for (int i = 0; i < scoreCount && i < MAX_SCORES; i++) {
+        ScoreEntry score = GetScoreAt(i);
+        
+        // Posição
+        char posText[10];
+        sprintf(posText, "%dº", i + 1);
+        DrawText(posText, 
+                 GetScreenWidth()/2 - 250, 
+                 startY + i * entryHeight, 
+                 25, 
+                 WHITE);
+        
+        // Nome
+        DrawText(score.name, 
+                 GetScreenWidth()/2 - 100, 
+                 startY + i * entryHeight, 
+                 25, 
+                 WHITE);
+        
+        // Pontuação
+        char scoreText[20];
+        sprintf(scoreText, "%ld", score.score);
+        DrawText(scoreText, 
+                 GetScreenWidth()/2 + 100, 
+                 startY + i * entryHeight, 
+                 25, 
+                 WHITE);
+    }
+    
+    // Instrução para voltar ao menu
+    static float time = 0;
+    time += GetFrameTime();
+    const char *instruction = "Pressione M para voltar ao menu";
+    DrawText(instruction, 
+             GetScreenWidth()/2 - MeasureText(instruction, 20)/2, 
+             GetScreenHeight() - 50, 
+             20, 
+             Fade(RED, 0.5f + sinf(time * 3.0f) * 0.5f));
+    
+    // Cursor personalizado
     DrawMinimalistCursor();
 }

@@ -7,16 +7,21 @@
 #include "audio.h"
 #include "powerup.h"
 #include "boss.h"
+#include "scoreboard.h" // Adicione esta linha para acessar SortType
+
+#define MAX_NAME_LENGTH 50  // Definindo um tamanho máximo para o nome do jogador
 
 typedef enum {
     GAME_STATE_MAIN_MENU,  
     GAME_STATE_TUTORIAL, 
     GAME_STATE_PLAYING,
     GAME_STATE_PAUSED,   
-    GAME_STATE_GAME_OVER
+    GAME_STATE_GAME_OVER,
+    GAME_STATE_ENTER_NAME,   // Novo estado para inserir nome
+    GAME_STATE_SCOREBOARD    // Novo estado para mostrar o placar
 } GameState;
 
-typedef struct {
+typedef struct Game {
     Player player;
     EnemyList enemies;
     Bullet *bullets;
@@ -52,11 +57,22 @@ typedef struct {
     bool showBossMessage;
     float bossMessageTimer;
 
+    // Para entrada de nome
+    char playerName[MAX_NAME_LENGTH];
+    int nameLength;
+    bool isHighScore;
+
+    // Para rastreamento de tempo
+    float gameTime;          // Tempo total de jogo
+    bool showGameSummary;    // Flag para mostrar resumo do jogo antes do game over
+    SortType currentSortType; // Tipo de ordenação atual no scoreboard
+
 } Game;
 
+// Funções de manipulação principal do jogo
 void InitGame(Game *game);
+void ResetGame(Game *game);
 void UpdateGame(Game *game, float deltaTime);
-void DrawGame(const Game *game); // Passa o jogo inteiro para renderização
-void ResetGame(Game *game);     // Para reiniciar após game over
+void DrawGame(Game *game);  // Adicione esta linha
 
 #endif // GAME_H

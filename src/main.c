@@ -18,7 +18,7 @@ int main(void) {
         float deltaTime = GetFrameTime();
 
         // Verificar tecla para alternar modo de tela cheia
-        if (IsKeyPressed(KEY_H)) {
+        if (IsKeyPressed(KEY_KP_MULTIPLY)) {
             AppToggleFullscreen();
         }
 

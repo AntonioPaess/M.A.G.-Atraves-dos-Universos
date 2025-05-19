@@ -257,12 +257,13 @@ bool CheckBossHitByBullet(Boss *boss, Vector2 bulletPosition, float bulletRadius
                 boss->isTransitioning = true;
                 boss->transitionTimer = 0.0f;
                 
-                // Conceder pontos para a camada destruída (retornado ao chamador)
-                switch (boss->currentLayer + 1) { // +1 porque já decrementamos
-                    case 4: return 1000; // Primeira camada vale 1000
-                    case 3: return 2000; // Segunda camada vale 2000
-                    case 2: return 3000; // Terceira camada vale 3000
-                }
+                // Texto narrativo para a mudança de fase do boss
+                extern void ShowScreenText(const char* text, Vector2 position, float fontSize, Color color, float duration, bool fadeOut);
+                extern const char* GetBossPhaseText(void);
+                const char* bossPhaseText = GetBossPhaseText();
+                ShowScreenText(bossPhaseText, 
+                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
+                              28, RED, 3.0f, true);
             } else {
                 // Boss derrotado
                 boss->active = false;
