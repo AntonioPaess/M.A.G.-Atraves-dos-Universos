@@ -9,13 +9,13 @@
 #include "boss.h" 
 #include "game.h"
 
-// Funções auxiliares de desenho para uso externo
+
 void DrawPixelRect(float x, float y, float width, float height, Color color);
 void DrawPixelCircleV(Vector2 center, float radius, Color color);
 void DrawPixelLine(float x1, float y1, float x2, float y2, Color color);
 void DrawPlayAreaBorder(void);
 
-// Funções de desenho
+
 void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *bullets, const Bullet *enemyBullets, const Powerup *powerups, long score);
 void DrawGameOverScreen(long finalScore);
 void DrawMainMenu(void);
@@ -28,4 +28,4 @@ void DrawGameSummary(long score, int kills, float gameTime);
 void RenderScoreboardScreen(void);
 void DrawNameEntryScreen(Game *game);
 
-#endif // RENDER_H
+#endif 

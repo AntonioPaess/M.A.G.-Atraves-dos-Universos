@@ -2,19 +2,19 @@
 #define ENEMY_H
 
 #include "raylib.h"
-#include "utils.h" // Para raios e velocidades de inimigo
-#include "bullet.h" // Para permitir que inimigos atirem
+#include "utils.h" 
+#include "bullet.h" 
 #include <stdbool.h>
 
-#define DEATH_ANIMATION_DURATION 0.8f // duração em segundos
+#define DEATH_ANIMATION_DURATION 0.8f 
 
-// Tipos de inimigos
+
 typedef enum {
-    ENEMY_TYPE_NORMAL,   // Inimigo padrão
-    ENEMY_TYPE_SPEEDER,  // Pequeno e rápido
-    ENEMY_TYPE_TANK,     // Grande e resistente
-    ENEMY_TYPE_EXPLODER, // Explode em projéteis
-    ENEMY_TYPE_SHOOTER   // Mantém distância e dispara
+    ENEMY_TYPE_NORMAL,   
+    ENEMY_TYPE_SPEEDER,  
+    ENEMY_TYPE_TANK,     
+    ENEMY_TYPE_EXPLODER, 
+    ENEMY_TYPE_SHOOTER   
 } EnemyType;
 
 typedef struct Enemy {
@@ -24,15 +24,15 @@ typedef struct Enemy {
     bool active;
     Color color;
     float speed;
-    EnemyType type;      // Tipo do inimigo
-    int health;          // Pontos de vida
-    float shootTimer;    // Para inimigos atiradores
-    int dodgeCount;      // Para inimigos que desviam
-    struct Enemy *next;  // Próximo inimigo na lista
-    struct Enemy *prev;  // Anterior inimigo na lista
+    EnemyType type;      
+    int health;          
+    float shootTimer;    
+    int dodgeCount;      
+    struct Enemy *next;  
+    struct Enemy *prev;  
     
-    bool isDying;        // Flag para indicar que está em animação de morte
-    float deathTimer;    // Tempo decorrido na animação de morte
+    bool isDying;        
+    float deathTimer;    
 } Enemy;
 
 typedef struct {
@@ -47,4 +47,4 @@ void DrawEnemies(const EnemyList *list);
 void RemoveEnemy(EnemyList *list, Enemy *toRemove);
 void FreeEnemies(EnemyList *list);
 
-#endif // ENEMY_H
+#endif 

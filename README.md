@@ -82,17 +82,7 @@ cd "M.A.G. O inimigo agora é outro"
 
 ### 3. Torne os scripts executáveis (Linux/macOS)
 
-      # Criar script run_gemini.sh
-cat > run_gemini.sh << 'EOF'
-#!/bin/bash
-cd "$(dirname "$0")"
-source venv/bin/activate
-python src/gemini.py "$@"
-EOF
-
-# Criar script preload_phrases.sh
-    Criar script run_gemini.sh:
-
+  Criar script run_gemini.sh:
     cat > run_gemini.sh << 'EOF'
     #!/bin/bash
     cd "$(dirname "$0")"
@@ -100,8 +90,7 @@ EOF
     python src/gemini.py "$@"
     EOF
 
-    Criar script preload_phrases.sh:
-
+  Criar script preload_phrases.sh
     cat > preload_phrases.sh << 'EOF'
     #!/bin/bash
     cd "$(dirname "$0")"

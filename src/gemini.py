@@ -2,10 +2,10 @@ import sys
 import argparse
 import google.generativeai as genai
 
-# Chave da API
+
 API_KEY = "AIzaSyBVNPwP_BNO-7pRU72iOU7c-8O91baFRGE"
 
-# Prompts baseados na nova história do universo geométrico
+
 PROMPTS = {
     "boss": (
         "Você é Hexakron, o Encarregado da Simetria, um ser colossal feito de geometrias perfeitas "
@@ -14,7 +14,7 @@ PROMPTS = {
         "Formato: 'HEXAKRON: [sua frase]' (máximo 40 caracteres incluindo o prefixo). "
         "Exemplo: 'HEXAKRON: Sua assimetria será corrigida!'"
     ),
-    # Elementos narrativos
+    
     "intro": (
         "Você é Gronkarr, um guerreiro que era Peixe Cósmico e agora, após derrotar o Leviathan, "
         "foi transportado para o Universo Geométrico onde se tornou um simples círculo luminoso. "
@@ -81,15 +81,6 @@ PROMPTS = {
 }
 
 def fazer_requisicao(tipo_prompt) -> str | None:
-    """
-    Envia um prompt para a API do Gemini e retorna a resposta textual.
-    
-    Args:
-        tipo_prompt: Tipo de prompt a ser enviado
-        
-    Returns:
-        String com a resposta ou None em caso de erro
-    """
     if not API_KEY:
         print("API_KEY não definida.", file=sys.stderr)
         return None
@@ -101,7 +92,7 @@ def fazer_requisicao(tipo_prompt) -> str | None:
     try:
         genai.configure(api_key=API_KEY)
 
-        # Ajustes específicos para cada tipo de prompt
+        
         if tipo_prompt in ["boss", "boss_appear", "boss_phase", "boss_defeat"]:
             temperature = 0.7
             max_tokens = 40
@@ -110,12 +101,12 @@ def fazer_requisicao(tipo_prompt) -> str | None:
             max_tokens = 10
         elif tipo_prompt == "intro":
             temperature = 0.6
-            max_tokens = 70 # Aumentado para o limite do prompt de intro
+            max_tokens = 70 
         elif tipo_prompt == "kill_milestone":
             temperature = 0.6
-            max_tokens = 40 # Ajustado para o limite do prompt
+            max_tokens = 40 
         elif tipo_prompt == "random_joke":
-            temperature = 0.8 # Piadas podem ser mais criativas
+            temperature = 0.8 
             max_tokens = 60
         elif tipo_prompt == "gronkarr_lament":
             temperature = 0.5
@@ -148,12 +139,11 @@ def fazer_requisicao(tipo_prompt) -> str | None:
         return None
 
 def validar_resposta(tipo, resposta):
-    """Valida a resposta de acordo com o tipo de prompt"""
     if tipo in ["boss", "intro", "kill_milestone", "damage", 
                 "boss_appear", "boss_phase", "boss_defeat",
-                "random_joke", "gronkarr_lament", "cosmic_wisdom"]: # Adicionados os novos tipos
+                "random_joke", "gronkarr_lament", "cosmic_wisdom"]: 
         return len(resposta) > 0
-    return False # Esta linha agora só seria alcançada se 'tipo' fosse inesperado
+    return False 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Gerador de conteúdo via Gemini API")
@@ -169,7 +159,7 @@ if __name__ == "__main__":
     if resposta and validar_resposta(args.tipo, resposta):
         print(resposta)
     else:
-        # Se a API falhar, usar frases de fallback
+        
         if args.tipo == "boss":
             print("HEXAKRON: Sua imperfeição me ofende.")
         elif args.tipo == "intro":
@@ -179,7 +169,7 @@ if __name__ == "__main__":
         elif args.tipo == "damage":
             print("GRONKARR: EITA LAPADA DO KRAI TIO!")
         elif args.tipo == "boss_appear":
-            print("NARRADOR: Um inimigo poderoso se aproxima!")
+            print("NARRADOR: Um objeto geometrico poderoso se aproxima!")
         elif args.tipo == "boss_phase":
             print("HEXAKRON: Este não é nem meu verdadeiro poder!")
         elif args.tipo == "boss_defeat":

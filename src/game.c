@@ -13,11 +13,11 @@
 #include <stdio.h>
 #include "narrative_text.h"
 
-// Declarar acesso às variáveis externas definidas em utils.c
+
 extern float currentPlayAreaRadius;
 
 void ResetGame(Game *game) {
-    // Limpar todos os inimigos
+    
     Enemy *currentEnemy = game->enemies.head;
     while (currentEnemy != NULL) {
         Enemy *nextEnemy = currentEnemy->next;
@@ -27,7 +27,7 @@ void ResetGame(Game *game) {
     game->enemies.head = NULL;
     game->enemies.count = 0;
 
-    // Limpar todos os projéteis
+    
     Bullet *currentBullet = game->bullets;
     while (currentBullet != NULL) {
         Bullet *nextBullet = currentBullet->next;
@@ -36,7 +36,7 @@ void ResetGame(Game *game) {
     }
     game->bullets = NULL;
     
-    // Limpar projéteis inimigos
+    
     currentBullet = game->enemyBullets;
     while (currentBullet != NULL) {
         Bullet *nextBullet = currentBullet->next;
@@ -45,61 +45,61 @@ void ResetGame(Game *game) {
     }
     game->enemyBullets = NULL;
 
-    // Reiniciar a posição do jogador
+    
     InitPlayer(&game->player, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    // Reiniciar pontuação
+    
     game->score = 0;
 
-    // Reiniciar timers
+    
     game->enemySpawnTimer = 0.0f;
-    game->enemySpawnInterval = 1.5f; // Intervalo inicial
+    game->enemySpawnInterval = 1.5f; 
     game->difficultyTimer = 0.0f;
-    game->shootCooldown = 0.0f;  // Reseta o cooldown de tiro
+    game->shootCooldown = 0.0f;  
 
-    // Mudar o estado para jogando
+    
     game->currentState = GAME_STATE_PLAYING;
 
-    // Reiniciar música se necessário
+    
     if (IsAudioDeviceReady() && game->backgroundMusic.ctxData != NULL) {
         StopMusicStream(game->backgroundMusic);
         PlayMusicStream(game->backgroundMusic);
     }
     
-    // Limpar power-ups
+    
     ClearPowerups(&game->powerups);
     
-    // Resetar contadores para power-ups
+    
     game->enemiesKilled = 0;
     game->nextPowerupAt = 10;
     game->increasedDamage = false;
 
-    // Resetar boss
+    
     game->bossActive = false;
     game->enemiesKilledSinceBoss = 0;
     game->showBossMessage = false;
     game->bossMessageTimer = 0.0f;
 
-    // Resetar tempo de jogo
+    
     game->gameTime = 0.0f;
     game->showGameSummary = false;
 }
 
 void UpdateDifficulty(Game *game, float deltaTime) {
     game->difficultyTimer += deltaTime;
-    // A cada 10 segundos, aumenta a dificuldade (diminui o intervalo de spawn)
+    
     if (game->difficultyTimer > 10.0f) {
-        game->enemySpawnInterval *= 0.90f; // Diminui o intervalo em 10%
-        if (game->enemySpawnInterval < 0.2f) { // Limite mínimo para o intervalo
+        game->enemySpawnInterval *= 0.90f; 
+        if (game->enemySpawnInterval < 0.2f) { 
             game->enemySpawnInterval = 0.2f;
         }
-        game->difficultyTimer = 0.0f; // Reseta o timer de dificuldade
-        // printf("Dificuldade aumentada! Novo intervalo de spawn: %.2f s\n", game->enemySpawnInterval);
+        game->difficultyTimer = 0.0f; 
+        
     }
 }
 
 void SpawnEnemy(Game *game) {
-    // Se o boss estiver ativo, não spawna novos inimigos
+    
     if (game->bossActive) return;
 
     game->enemySpawnTimer += GetFrameTime();
@@ -107,42 +107,42 @@ void SpawnEnemy(Game *game) {
         game->enemySpawnTimer = 0.0f;
 
         Vector2 spawnPosition;
-        int side = GetRandomValue(0, 3); // 0: top, 1: bottom, 2: left, 3: right
+        int side = GetRandomValue(0, 3); 
 
-        // Determinar o tipo de inimigo baseado em probabilidade e score
+        
         EnemyType type;
         int randomType = GetRandomValue(1, 100);
         
-        // Progressivamente introduzir inimigos mais difíceis com base na pontuação
+        
         if (game->score < 1000) {
-            // No início, apenas inimigos normais
+            
             type = ENEMY_TYPE_NORMAL;
         } 
         else if (game->score < 2000) {
-            // Entre 1000-2000, introduz shooters e tanks (reduzindo shooters)
+            
             if (randomType <= 50) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 60) type = ENEMY_TYPE_SHOOTER; // Reduzido de 30% para 10%
+            else if (randomType <= 60) type = ENEMY_TYPE_SHOOTER; 
             else if (randomType <= 85) type = ENEMY_TYPE_TANK;
             else type = ENEMY_TYPE_EXPLODER;
         }
         else if (game->score < 3000) {
-            // Entre 2000-3000, introduz speeders (reduzindo shooters)
+            
             if (randomType <= 35) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 45) type = ENEMY_TYPE_SHOOTER; // Reduzido de 20% para 10%
+            else if (randomType <= 45) type = ENEMY_TYPE_SHOOTER; 
             else if (randomType <= 75) type = ENEMY_TYPE_TANK;
             else if (randomType <= 90) type = ENEMY_TYPE_EXPLODER;
             else type = ENEMY_TYPE_SPEEDER;
         }
         else {
-            // Fase avançada acima de 3000 pontos (reduzindo shooters)
+            
             if (randomType <= 20) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 25) type = ENEMY_TYPE_SHOOTER; // Reduzido de 20% para 5%
+            else if (randomType <= 25) type = ENEMY_TYPE_SHOOTER; 
             else if (randomType <= 55) type = ENEMY_TYPE_TANK;
             else if (randomType <= 85) type = ENEMY_TYPE_EXPLODER;
             else type = ENEMY_TYPE_SPEEDER;
         }
         
-        // Ajustar raio e velocidade com base no tipo
+        
         float radius;
         float speed;
         
@@ -163,36 +163,36 @@ void SpawnEnemy(Game *game) {
                 radius = ENEMY_RADIUS_MIN + 3.0f;
                 speed = ENEMY_SPEED_MIN + (ENEMY_SPEED_MAX / 3.0f) + (game->score / 1800.0f);
                 break;
-            default: // ENEMY_TYPE_NORMAL
+            default: 
                 radius = GetRandomValue(ENEMY_RADIUS_MIN, ENEMY_RADIUS_MAX);
                 speed = GetRandomValue(ENEMY_SPEED_MIN, ENEMY_SPEED_MAX) + (game->score / 1000.0f);
                 break;
         }
         
-        // Limitar velocidade máxima
+        
         if (speed > ENEMY_SPEED_MAX * 2) speed = ENEMY_SPEED_MAX * 2;
 
-        // Posição de spawn baseada no lado
+        
         switch (side) {
-            case 0: // Top (acima da área jogável)
+            case 0: 
                 spawnPosition = (Vector2){
                     (float)GetRandomValue((int)PLAY_AREA_LEFT, (int)PLAY_AREA_RIGHT), 
                     PLAY_AREA_TOP - radius - 10.0f
                 };
                 break;
-            case 1: // Bottom (abaixo da área jogável)
+            case 1: 
                 spawnPosition = (Vector2){
                     (float)GetRandomValue((int)PLAY_AREA_LEFT, (int)PLAY_AREA_RIGHT), 
                     PLAY_AREA_BOTTOM + radius + 10.0f
                 };
                 break;
-            case 2: // Left (à esquerda da área jogável)
+            case 2: 
                 spawnPosition = (Vector2){
                     PLAY_AREA_LEFT - radius - 10.0f, 
                     (float)GetRandomValue((int)PLAY_AREA_TOP, (int)PLAY_AREA_BOTTOM)
                 };
                 break;
-            case 3: // Right (à direita da área jogável)
+            case 3: 
                 spawnPosition = (Vector2){
                     PLAY_AREA_RIGHT + radius + 10.0f, 
                     (float)GetRandomValue((int)PLAY_AREA_TOP, (int)PLAY_AREA_BOTTOM)
@@ -205,47 +205,47 @@ void SpawnEnemy(Game *game) {
 }
 
 void SpawnEnemies(Game *game) {
-    // Se o boss estiver ativo, não spawna novos inimigos
+    
     if (game->bossActive) return;
 
-    // Calcular quantos inimigos faltam para atingir o máximo
+    
     int enemiesToSpawn = MAX_ENEMIES - game->enemies.count;
     
     for (int i = 0; i < enemiesToSpawn; i++) {
-        // Lógica para escolher tipo de inimigo (manter igual)
+        
         EnemyType type;
         int randomType = GetRandomValue(1, 100);
         
-        // Progressivamente introduzir inimigos mais difíceis com base na pontuação
+        
         if (game->score < 1000) {
-            // No início, apenas inimigos normais
+            
             type = ENEMY_TYPE_NORMAL;
         } 
         else if (game->score < 2000) {
-            // Entre 1000-2000, introduz shooters e tanks (reduzindo shooters)
+            
             if (randomType <= 50) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 60) type = ENEMY_TYPE_SHOOTER; // Reduzido de 30% para 10%
+            else if (randomType <= 60) type = ENEMY_TYPE_SHOOTER; 
             else if (randomType <= 85) type = ENEMY_TYPE_TANK;
             else type = ENEMY_TYPE_EXPLODER;
         }
         else if (game->score < 3000) {
-            // Entre 2000-3000, introduz speeders (reduzindo shooters)
+            
             if (randomType <= 35) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 45) type = ENEMY_TYPE_SHOOTER; // Reduzido de 20% para 10%
+            else if (randomType <= 45) type = ENEMY_TYPE_SHOOTER; 
             else if (randomType <= 75) type = ENEMY_TYPE_TANK;
             else if (randomType <= 90) type = ENEMY_TYPE_EXPLODER;
             else type = ENEMY_TYPE_SPEEDER;
         }
         else {
-            // Fase avançada acima de 3000 pontos (reduzindo shooters)
+            
             if (randomType <= 20) type = ENEMY_TYPE_NORMAL;
-            else if (randomType <= 25) type = ENEMY_TYPE_SHOOTER; // Reduzido de 20% para 5%
+            else if (randomType <= 25) type = ENEMY_TYPE_SHOOTER; 
             else if (randomType <= 55) type = ENEMY_TYPE_TANK;
             else if (randomType <= 85) type = ENEMY_TYPE_EXPLODER;
             else type = ENEMY_TYPE_SPEEDER;
         }
         
-        // Ajustar raio e velocidade com base no tipo
+        
         float radius;
         float speed;
         
@@ -266,18 +266,18 @@ void SpawnEnemies(Game *game) {
                 radius = ENEMY_RADIUS_MIN + 3.0f;
                 speed = ENEMY_SPEED_MIN + (ENEMY_SPEED_MAX / 3.0f) + (game->score / 1800.0f);
                 break;
-            default: // ENEMY_TYPE_NORMAL
+            default: 
                 radius = GetRandomValue(ENEMY_RADIUS_MIN, ENEMY_RADIUS_MAX);
                 speed = GetRandomValue(ENEMY_SPEED_MIN, ENEMY_SPEED_MAX) + (game->score / 1000.0f);
                 break;
         }
         
-        // Limitar velocidade máxima
+        
         if (speed > ENEMY_SPEED_MAX * 2) speed = ENEMY_SPEED_MAX * 2;
 
-        // Para posição de spawn, gerar um ângulo aleatório e posicionar fora do círculo
+        
         float angle = GetRandomValue(0, 360) * DEG2RAD;
-        float spawnDistance = PLAY_AREA_RADIUS + radius + 20.0f; // Um pouco além da borda
+        float spawnDistance = PLAY_AREA_RADIUS + radius + 20.0f; 
         
         Vector2 spawnPosition = {
             PLAY_AREA_CENTER_X + cosf(angle) * spawnDistance,
@@ -289,43 +289,43 @@ void SpawnEnemies(Game *game) {
 }
 
 void HandleInput(Game *game, float deltaTime) {
-    // Atualizar o cooldown de tiro
+    
     if (game->shootCooldown > 0) {
         game->shootCooldown -= deltaTime;
     }
 
-    // Atirar quando o botão esquerdo do mouse é pressionado OU segurado
+    
     if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && game->shootCooldown <= 0) {
         Vector2 mousePos = GetMousePosition();
         Vector2 direction = {0};
         
-        // Calculando direction com funções do raymath.h
+        
         Vector2 diff = Vector2Subtract(mousePos, game->player.position);
         direction = Vector2Normalize(diff);
         
-        // A posição inicial do projétil deve ser o centro do jogador
+        
         Vector2 bulletStartPosition = game->player.position;
 
         if (game->increasedDamage) {
-            // Versão com dano aumentado (projétil maior)
+            
             AddBulletWithProps(&game->bullets, bulletStartPosition, direction, BULLET_RADIUS * 1.5f, 2);
         } else {
-            // Versão normal
+            
             AddBullet(&game->bullets, bulletStartPosition, direction);
         }
         PlayGameSound(game->shootSound);
         
-        // Definir cooldown para o próximo tiro (0.2 segundos é uma boa cadência)
+        
         game->shootCooldown = 0.2f;
     }
 }
 
 void HandleCollisions(Game *game) {
-    // Colisão Projétil -> Inimigo
+    
     Bullet *currentBullet = game->bullets;
     while (currentBullet != NULL) {
         if (currentBullet->active) {
-            // Verificação de colisão com inimigos regulares (código existente)
+            
             Enemy *currentEnemy = game->enemies.head;
             Enemy *prevEnemy = NULL;
             while (currentEnemy != NULL) {
@@ -333,14 +333,14 @@ void HandleCollisions(Game *game) {
                     if (CheckCollisionCircles(currentBullet->position, currentBullet->radius,
                                               currentEnemy->position, currentEnemy->radius)) {
                         PlayGameSound(game->enemyExplodeSound);
-                        currentBullet->active = false; // Projétil é consumido
+                        currentBullet->active = false; 
                         
-                        // Usar o dano do projétil (padrão é 1)
+                        
                         currentEnemy->health -= currentBullet->damage;
                         
-                        // Se o inimigo foi destruído
+                        
                         if (currentEnemy->health <= 0) {
-                            // Se for um exploder, gerar projéteis em todas as direções
+                            
                             if (currentEnemy->type == ENEMY_TYPE_EXPLODER) {
                                 for (int i = 0; i < 8; i++) {
                                     float angle = i * (2.0f * PI / 8.0f);
@@ -349,18 +349,18 @@ void HandleCollisions(Game *game) {
                                 }
                             }
                             
-                            // Remover o inimigo
+                            
                             Enemy* toRemove = currentEnemy;
                             currentEnemy = currentEnemy->next;
 
                             if (toRemove->prev == NULL) {
-                                // É o primeiro da lista
+                                
                                 game->enemies.head = toRemove->next;
                                 if (game->enemies.head != NULL) {
                                     game->enemies.head->prev = NULL;
                                 }
                             } else {
-                                // Não é o primeiro
+                                
                                 toRemove->prev->next = toRemove->next;
                                 if (toRemove->next != NULL) {
                                     toRemove->next->prev = toRemove->prev;
@@ -370,10 +370,10 @@ void HandleCollisions(Game *game) {
                             free(toRemove);
                             game->enemies.count--;
                             
-                            // Incrementar contador de inimigos mortos
+                            
                             game->enemiesKilled++;
                             
-                            // Mostrar mensagem motivacional a cada 10 kills
+                            
                             if (game->enemiesKilled % 10 == 0 && game->enemiesKilled > 0) {
                                 const char* milestoneText = GetKillMilestoneText();
                                 ShowScreenText(milestoneText, 
@@ -381,12 +381,12 @@ void HandleCollisions(Game *game) {
                                               25, GOLD, 3.0f, true);
                             }
                             
-                            // Incrementar contador para spawn do boss
+                            
                             game->enemiesKilledSinceBoss++;
 
-                            // Verificar se é hora de spawnar o boss
+                            
                             if (game->enemiesKilledSinceBoss >= 50 && !game->bossActive) {
-                                // Calcular posição de spawn (fora da área visível)
+                                
                                 float angle = GetRandomValue(0, 360) * DEG2RAD;
                                 float spawnDist = currentPlayAreaRadius + 100.0f;
                                 Vector2 spawnPos = {
@@ -394,35 +394,35 @@ void HandleCollisions(Game *game) {
                                     PLAY_AREA_CENTER_Y + sinf(angle) * spawnDist
                                 };
                                 
-                                // Inicializar o boss
+                                
                                 InitBoss(&game->boss, spawnPos);
                                 game->bossActive = true;
                                 game->enemiesKilledSinceBoss = 0;
                                 
-                                // Mostrar mensagem
+                                
                                 game->showBossMessage = true;
                                 game->bossMessageTimer = 0.0f;
                                 
-                                // Texto narrativo para a aparição do boss
+                                
                                 const char* bossAppearText = GetBossAppearText();
                                 ShowScreenText(bossAppearText, 
                                               (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
                                               30, RED, 3.0f, true);
                                 
-                                // Som especial para o boss
+                                
                                 PlayGameSound(game->enemyExplodeSound);
                             }
 
-                            // Verificar se atingiu um milestone para poder spawnar power-ups
+                            
                             if (game->enemiesKilled == game->nextPowerupAt) {
-                                // Calcular posições para os três power-ups equidistantes
+                                
                                 float angle1 = GetRandomValue(0, 360) * DEG2RAD;
                                 float angle2 = (angle1 + 120.0f) * DEG2RAD;
                                 float angle3 = (angle1 + 240.0f) * DEG2RAD;
                                 
-                                float distance = currentPlayAreaRadius * 0.5f; // 50% do raio da área
+                                float distance = currentPlayAreaRadius * 0.5f; 
                                 
-                                // Posições para os três power-ups
+                                
                                 Vector2 pos1 = {
                                     PLAY_AREA_CENTER_X + cosf(angle1) * distance,
                                     PLAY_AREA_CENTER_Y + sinf(angle1) * distance
@@ -438,12 +438,12 @@ void HandleCollisions(Game *game) {
                                     PLAY_AREA_CENTER_Y + sinf(angle3) * distance
                                 };
                                 
-                                // Adicionar os três tipos de power-up
+                                
                                 AddPowerup(&game->powerups, pos1, POWERUP_DAMAGE);
                                 AddPowerup(&game->powerups, pos2, POWERUP_HEAL);
                                 AddPowerup(&game->powerups, pos3, POWERUP_SHIELD);
                                 
-                                // Atualizar para o próximo milestone
+                                
                                 if (game->nextPowerupAt < 50) {
                                     game->nextPowerupAt += 10;
                                 } else {
@@ -451,15 +451,15 @@ void HandleCollisions(Game *game) {
                                 }
                             }
 
-                            // Adicionar os pontos originais
+                            
                             game->score += 100;
                         } else {
-                            // Inimigo ainda tem vida
+                            
                             prevEnemy = currentEnemy;
                             currentEnemy = currentEnemy->next;
                         }
                         
-                        break; // Projétil só pode atingir um inimigo
+                        break; 
                     }
                 }
                 prevEnemy = currentEnemy;
@@ -469,37 +469,37 @@ void HandleCollisions(Game *game) {
         currentBullet = currentBullet->next;
     }
 
-    // Verificar colisão entre projéteis do jogador e o boss
+    
     if (game->bossActive && game->boss.active) {
-        currentBullet = game->bullets;  // Reinicializar currentBullet para reutilizar
+        currentBullet = game->bullets;  
         
         while (currentBullet != NULL) {
             if (currentBullet->active) {
-                // Usar a função específica para verificar colisão com o boss
+                
                 if (CheckBossHitByBullet(&game->boss, currentBullet->position, currentBullet->radius, currentBullet->damage)) {
-                    // Efeito sonoro
+                    
                     PlayGameSound(game->enemyExplodeSound);
                     
-                    // Desativar projétil
+                    
                     currentBullet->active = false;
                     
-                    // Verificar se o boss foi derrotado totalmente ou apenas uma camada
+                    
                     if (!game->boss.active) {
                         game->bossActive = false;
-                        game->score += 4000; // Pontuação final por derrotar completamente o boss
+                        game->score += 4000; 
                         
-                        // Texto narrativo para a derrota do boss
+                        
                         const char* bossDefeatText = GetBossDefeatText();
                         ShowScreenText(bossDefeatText, 
                                       (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
                                       30, RED, 4.0f, true);
                     } 
                     else if (game->boss.isTransitioning) {
-                        // Conceder pontos conforme a camada destruída
-                        switch (game->boss.currentLayer + 1) { // +1 porque já decrementamos
-                            case 4: game->score += 1000; break; // Primeira camada (hexágono)
-                            case 3: game->score += 2000; break; // Segunda camada (quadrado)
-                            case 2: game->score += 3000; break; // Terceira camada (círculo)
+                        
+                        switch (game->boss.currentLayer + 1) { 
+                            case 4: game->score += 1000; break; 
+                            case 3: game->score += 2000; break; 
+                            case 2: game->score += 3000; break; 
                         }
                     }
                 }
@@ -507,30 +507,30 @@ void HandleCollisions(Game *game) {
             currentBullet = currentBullet->next;
         }
         
-        // Colisão entre jogador e boss (apenas se o jogador não estiver invencível ou em dash)
+        
         if (!game->player.isInvincible && !game->player.isDashing) {
             if (CheckCollisionCircles(game->player.position, game->player.radius,
                                      game->boss.position, game->boss.radius * 0.9f)) {
-                // Verificar se o jogador tem escudo
+                
                 if (game->player.hasShield) {
-                    // Efeito sonoro de escudo
+                    
                     PlayGameSound(game->enemyExplodeSound);
                     
-                    // Desativar o escudo após absorver um ataque
+                    
                     game->player.hasShield = false;
                 } else {
-                    // Dano ao jogador
+                    
                     PlayGameSound(game->playerExplodeSound);
                     game->player.lives--;
                     
-                    // Mostrar onomatopeia de dano
+                    
                     const char* damageText = GetDamageText();
                     ShowScreenText(damageText, 
                                   (Vector2){game->player.position.x, game->player.position.y - 30}, 
                                   30, RED, 1.0f, true);
                     
                     if (game->player.lives <= 0) {
-                        // Ativar a tela de resumo antes do game over
+                        
                         game->showGameSummary = true;
                         game->currentState = GAME_STATE_GAME_OVER;
                         return;
@@ -544,50 +544,50 @@ void HandleCollisions(Game *game) {
         }
     }
 
-    // Colisão Projétil Inimigo -> Jogador
+    
     currentBullet = game->enemyBullets;
     while (currentBullet != NULL) {
-        // MODIFICAR: Ignorar colisões se o jogador estiver em dash
-        if (currentBullet->active && !game->player.isDashing) {  // Adicionar verificação de dash
+        
+        if (currentBullet->active && !game->player.isDashing) {  
             if (CheckCollisionCircles(game->player.position, game->player.radius,
                                       currentBullet->position, currentBullet->radius)) {
                 
-                // Verificar se o jogador tem escudo
+                
                 if (game->player.hasShield) {
-                    // Efeito sonoro de escudo
-                    PlayGameSound(game->playerExplodeSound); // Pode ser substituído por um som específico de escudo
                     
-                    // Repelir o projétil em vez de destruí-lo
+                    PlayGameSound(game->playerExplodeSound); 
+                    
+                    
                     Vector2 repelDirection = Vector2Normalize(
                         Vector2Subtract(currentBullet->position, game->player.position)
                     );
                     
-                    // Duplicar a velocidade para um efeito mais dramático
+                    
                     currentBullet->velocity = Vector2Scale(repelDirection, Vector2Length(currentBullet->velocity) * 1.5f);
                     
-                    // Desativar o escudo após repelir um ataque
-                    game->player.hasShield = false;
-                } else if (!game->player.isInvincible) {  // Adicione a verificação de invencibilidade AQUI
-                    // Comportamento normal apenas se não tiver escudo E não estiver invencível
-                    PlayGameSound(game->playerExplodeSound);
-                    currentBullet->active = false; // Desativar o projétil
                     
-                    // Reduzir vida
+                    game->player.hasShield = false;
+                } else if (!game->player.isInvincible) {  
+                    
+                    PlayGameSound(game->playerExplodeSound);
+                    currentBullet->active = false; 
+                    
+                    
                     game->player.lives--;
                     
-                    // Mostrar onomatopeia de dano
+                    
                     const char* damageText = GetDamageText();
                     ShowScreenText(damageText, 
                                   (Vector2){game->player.position.x, game->player.position.y - 30}, 
                                   30, RED, 1.0f, true);
                     
                     if (game->player.lives <= 0) {
-                        // Ativar a tela de resumo antes do game over
+                        
                         game->showGameSummary = true;
                         game->currentState = GAME_STATE_GAME_OVER;
                         return;
                     } else {
-                        // Ativar invencibilidade temporária
+                        
                         game->player.isInvincible = true;
                         game->player.invincibleTimer = INVINCIBILITY_TIME;
                         game->player.blinkTimer = BLINK_FREQUENCY;
@@ -600,42 +600,42 @@ void HandleCollisions(Game *game) {
         currentBullet = currentBullet->next;
     }
 
-    // Colisão Inimigo -> Jogador
+    
     Enemy *currentEnemy = game->enemies.head;
     Enemy *prevEnemy = NULL;
     while (currentEnemy != NULL) {
         Enemy *nextEnemy = currentEnemy->next;
         
-        // MODIFICAR: Ignorar colisões se o jogador estiver em dash
-        if (currentEnemy->active && !game->player.isDashing) {  // Adicionar verificação de dash
+        
+        if (currentEnemy->active && !game->player.isDashing) {  
             if (CheckCollisionCircles(game->player.position, game->player.radius,
                                       currentEnemy->position, currentEnemy->radius)) {
                 
-                // Verificar se o jogador tem escudo
+                
                 if (game->player.hasShield) {
-                    // Efeito sonoro de escudo
+                    
                     PlayGameSound(game->enemyExplodeSound);
                     
-                    // Repelir o inimigo
+                    
                     Vector2 repelDirection = Vector2Normalize(
                         Vector2Subtract(currentEnemy->position, game->player.position)
                     );
                     
-                    // Aplicar uma força de repulsão mais forte
+                    
                     currentEnemy->velocity = Vector2Scale(repelDirection, currentEnemy->speed * 5.0f);
                     
-                    // Desativar o escudo após repelir um ataque
+                    
                     game->player.hasShield = false;
                     
-                    // IMPORTANTE: Adicione este prevEnemy = currentEnemy para atualizar o ponteiro
+                    
                     prevEnemy = currentEnemy;
                     currentEnemy = nextEnemy;
-                    continue; // Pula para o próximo inimigo sem executar o código abaixo
+                    continue; 
                 } else if (!game->player.isInvincible) {
-                    // Comportamento normal quando não tem escudo E não está invencível
+                    
                     PlayGameSound(game->playerExplodeSound);
                     
-                    // Remover o inimigo que colidiu com o jogador
+                    
                     if (prevEnemy == NULL) {
                         game->enemies.head = nextEnemy;
                     } else {
@@ -645,29 +645,29 @@ void HandleCollisions(Game *game) {
                     free(currentEnemy);
                     game->enemies.count--;
                     
-                    // Reduzir vida
+                    
                     game->player.lives--;
                     
-                    // Mostrar onomatopeia de dano
+                    
                     const char* damageText = GetDamageText();
                     ShowScreenText(damageText, 
                                   (Vector2){game->player.position.x, game->player.position.y - 30}, 
                                   30, RED, 1.0f, true);
                     
                     if (game->player.lives <= 0) {
-                        // Ativar a tela de resumo antes do game over
+                        
                         game->showGameSummary = true;
                         game->currentState = GAME_STATE_GAME_OVER;
                         return;
                     } else {
-                        // Ativar invencibilidade temporária
+                        
                         game->player.isInvincible = true;
                         game->player.invincibleTimer = INVINCIBILITY_TIME;
                         game->player.blinkTimer = BLINK_FREQUENCY;
                     }
                 }
                 
-                // Se houve colisão, não precisa verificar mais
+                
                 break;
             }
         }
@@ -677,62 +677,62 @@ void HandleCollisions(Game *game) {
 }
 
 void InitGame(Game *game) {
-    // Inicializar o jogador
+    
     InitPlayer(&game->player, SCREEN_WIDTH, SCREEN_HEIGHT);
     
-    // Inicializar a área de jogo com tamanho adequado
+    
     InitPlayArea();
     
-    // Inicializar lista de inimigos
+    
     InitEnemyList(&game->enemies);
     
-    // Inicializar lista de projéteis
-    game->bullets = NULL;
-    game->enemyBullets = NULL; // Inicializa a lista de projéteis de inimigos
     
-    // Inicializar pontuação
+    game->bullets = NULL;
+    game->enemyBullets = NULL; 
+    
+    
     game->score = 0;
     
-    // Inicializar estado do jogo - começa no menu principal
+    
     game->currentState = GAME_STATE_MAIN_MENU;
     
-    // Inicializar timers
+    
     game->enemySpawnTimer = 0.0f;
     game->enemySpawnInterval = 1.5f;
     game->difficultyTimer = 0.0f;
-    game->shootCooldown = 0.0f;  // Inicializa o cooldown de tiro
+    game->shootCooldown = 0.0f;  
     
-    // Inicializar áudio
+    
     LoadGameAudio(&game->shootSound, &game->enemyExplodeSound, &game->playerExplodeSound, &game->backgroundMusic);
 
-    // Por padrão mostra o cursor (para o menu inicial)
+    
     ShowCursor();
     
-    // Inicializar contadores para power-ups
-    game->enemiesKilled = 0;
-    game->nextPowerupAt = 10;  // Primeiro power-up após 10 inimigos
     
-    // Inicializar lista de power-ups
+    game->enemiesKilled = 0;
+    game->nextPowerupAt = 10;  
+    
+    
     InitPowerups(&game->powerups);
     
-    // Estado inicial do dano
+    
     game->increasedDamage = false;
 
-    // Inicializar boss
+    
     game->bossActive = false;
     game->enemiesKilledSinceBoss = 0;
     game->showBossMessage = false;
     game->bossMessageTimer = 0.0f;
 
-    // Inicializar scoreboard
+    
     InitScoreboard();
     
-    // Inicializar campos para entrada de nome
+    
     memset(game->playerName, 0, MAX_NAME_LENGTH);
     game->nameLength = 0;
     game->isHighScore = false;
 
-    // Inicializar tempo de jogo
+    
     game->gameTime = 0.0f;
     game->showGameSummary = false;
     game->currentSortType = SORT_BY_SCORE;
@@ -743,9 +743,9 @@ void InitGame(Game *game) {
 void UpdateGame(Game *game, float deltaTime) {
     switch (game->currentState) {
         case GAME_STATE_MAIN_MENU:
-            // Mostrar cursor normal no menu
+            
             ShowCursor();
-            // Modificar para ir para a tela de história em vez do tutorial
+            
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
                 IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || 
                 IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON) || 
@@ -753,24 +753,24 @@ void UpdateGame(Game *game, float deltaTime) {
                 IsKeyPressed(KEY_ENTER) ||
                 GetKeyPressed() != 0) {
                 
-                // Ir diretamente para o tutorial
+                
                 game->currentState = GAME_STATE_TUTORIAL;
             }
             break;
             
         case GAME_STATE_TUTORIAL:
-            // Mostrar cursor normal no tutorial
+            
             ShowCursor();
-            // Passar para o jogo ao pressionar espaço
+            
             if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
-                // Inicializar o jogo quando sair do tutorial
+                
                 ResetGame(game);
                 game->currentState = GAME_STATE_PLAYING;
             }
             break;
             
         case GAME_STATE_PLAYING:
-            // Verificar se acabou de entrar no estado PLAYING (para mostrar texto de intro)
+            
             {
                 static GameState previousState = GAME_STATE_MAIN_MENU;
                 if (previousState != GAME_STATE_PLAYING) {
@@ -782,64 +782,64 @@ void UpdateGame(Game *game, float deltaTime) {
                 previousState = game->currentState;
             }
             
-            // Atualizar tempo de jogo
+            
             game->gameTime += deltaTime;
             
-            // Esconder cursor durante o jogo
+            
             HideCursor();
             
-            // Verificar tecla de pausa
+            
             if (IsKeyPressed(KEY_P)) {
                 game->currentState = GAME_STATE_PAUSED;
-                break; // Sair do case sem processar o resto do jogo
+                break; 
             }
             
-            // Atualizar a área de jogo dinâmica - remover o valor 0
-            UpdateDynamicPlayArea(deltaTime, game->score); // Passar a pontuação real para potenciais usos futuros
             
-            // Resto do código existente
+            UpdateDynamicPlayArea(deltaTime, game->score); 
+            
+            
             HandleInput(game, deltaTime);
             UpdatePlayer(&game->player, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
             UpdateEnemies(&game->enemies, game->player.position, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT, &game->bullets, &game->enemyBullets);
             UpdateBullets(&game->bullets, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
-            // Atualizar também os projéteis dos inimigos
+            
             UpdateBullets(&game->enemyBullets, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
             HandleCollisions(game);
             SpawnEnemy(game);
             UpdateDifficulty(game, deltaTime);
 
-            // Atualizar power-ups
+            
             UpdatePowerups(&game->powerups, deltaTime);
 
-            // Verificar colisão do jogador com power-ups
+            
             PowerupType collectedType;
             if (CheckPowerupCollision(&game->powerups, game->player.position, game->player.radius, &collectedType)) {
-                // Aplicar efeito baseado no tipo de power-up coletado
+                
                 switch (collectedType) {
                     case POWERUP_DAMAGE:
-                        // Aumentar dano (aplicado ao gerar projéteis)
+                        
                         game->increasedDamage = true;
                         
-                        // Reduzir uma vida (se tiver mais que 1)
+                        
                         if (game->player.lives > 1) {
                             game->player.lives--;
                         }
                         break;
                         
                     case POWERUP_HEAL:
-                        // Restaurar todas as vidas (máximo 3)
+                        
                         game->player.lives = 3;
                         break;
                         
                     case POWERUP_SHIELD:
-                        // Ativar o escudo por 15 segundos
+                        
                         game->player.hasShield = true;
                         game->player.shieldTimer = 15.0f;
                         break;
                 }
             }
 
-            // Atualizar boss
+            
             if (game->bossActive && game->boss.active) {
                 UpdateBoss(&game->boss, game->player.position, deltaTime, &game->enemyBullets);
             }
@@ -851,16 +851,16 @@ void UpdateGame(Game *game, float deltaTime) {
                 }
             }
             
-            // Chance aleatória de mostrar piada (aproximadamente a cada 30 segundos)
-            if (GetRandomValue(0, 1800) == 1) { // Com 60 FPS, isso dá ~1/30 chance por segundo
+            
+            if (GetRandomValue(0, 1800) == 1) { 
                 const char* jokeText = GetRandomJokeText();
                 ShowScreenText(jokeText, 
                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 + 100}, 
                              22, SKYBLUE, 4.0f, true);
             }
             
-            // Adicionar em game.c, quando o jogador está com pouca vida (1 vida restante):
-            if (game->player.lives == 1 && GetRandomValue(0, 600) == 0) { // Raramente quando está com 1 vida
+            
+            if (game->player.lives == 1 && GetRandomValue(0, 600) == 0) { 
                 const char* wisdomText = GetCosmicWisdomText();
                 ShowScreenText(wisdomText, 
                               (Vector2){GetScreenWidth()/2, 100}, 
@@ -869,20 +869,20 @@ void UpdateGame(Game *game, float deltaTime) {
             break;
 
         case GAME_STATE_PAUSED:
-            // Mostrar cursor no menu de pausa
+            
             ShowCursor();
             
-            // Voltar para o jogo
+            
             if (IsKeyPressed(KEY_P)) {
                 game->currentState = GAME_STATE_PLAYING;
             }
             
-            // Voltar para o menu principal
+            
             if (IsKeyPressed(KEY_M)) {
                 game->currentState = GAME_STATE_MAIN_MENU;
             }
             
-            // Reiniciar jogo
+            
             if (IsKeyPressed(KEY_R)) {
                 ResetGame(game);
                 game->currentState = GAME_STATE_PLAYING;
@@ -890,23 +890,23 @@ void UpdateGame(Game *game, float deltaTime) {
             break;
 
         case GAME_STATE_GAME_OVER:
-            // Mostrar cursor
+            
             ShowCursor();
             
-            // Comportamento unificado para ambas as telas (resumo e game over normal)
+            
             if (IsKeyPressed(KEY_R)) {
                 ResetGame(game);
                 game->currentState = GAME_STATE_PLAYING;
             } else if (IsKeyPressed(KEY_S)) {
-                // Ir para tela de entrada de nome se pressionar S
+                
                 game->currentState = GAME_STATE_ENTER_NAME;
                 memset(game->playerName, 0, MAX_NAME_LENGTH);
                 game->nameLength = 0;
             } else if (IsKeyPressed(KEY_M)) {
-                // Ir para o menu principal
+                
                 game->currentState = GAME_STATE_MAIN_MENU;
             }
-            // Se ainda está no resumo, oferecer a opção de pular para a tela de game over
+            
             else if (game->showGameSummary && 
                     (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || 
                      IsMouseButtonPressed(MOUSE_LEFT_BUTTON))) {
@@ -915,89 +915,89 @@ void UpdateGame(Game *game, float deltaTime) {
             break;
             
         case GAME_STATE_ENTER_NAME: {
-            // Capturar entrada de texto para o nome do jogador
+            
             int key = GetCharPressed();
             
-            // Processo de entrada de texto (caractere por caractere)
+            
             while (key > 0) {
-                // Somente aceitar caracteres válidos (alfanuméricos e alguns símbolos)
+                
                 if ((key >= 32) && (key <= 125) && (game->nameLength < MAX_NAME_LENGTH - 1)) {
                     game->playerName[game->nameLength] = (char)key;
-                    game->playerName[game->nameLength + 1] = '\0'; // Garantir final de string
+                    game->playerName[game->nameLength + 1] = '\0'; 
                     game->nameLength++;
                 }
                 
-                key = GetCharPressed(); // Verificar próximo caractere
+                key = GetCharPressed(); 
             }
             
-            // Permitir apagar caracteres com backspace
+            
             if (IsKeyPressed(KEY_BACKSPACE) && game->nameLength > 0) {
                 game->nameLength--;
                 game->playerName[game->nameLength] = '\0';
             }
             
-            // Submeter nome quando ENTER for pressionado
+            
             if (IsKeyPressed(KEY_ENTER) && game->nameLength > 0) {
-                // Adicionar a pontuação ao scoreboard
-                AddScore(game->playerName, game->score, game->enemiesKilled, game->gameTime);
-                SaveScoreboard(); // Salvar no arquivo
                 
-                // Mudar para a tela de scoreboard
+                AddScore(game->playerName, game->score, game->enemiesKilled, game->gameTime);
+                SaveScoreboard(); 
+                
+                
                 game->currentState = GAME_STATE_SCOREBOARD;
             }
             
-            // Deixe o código de renderização atual (DrawRectangle, etc.)
-            // Ele será chamado pela função DrawNameEntryScreen no DrawGame
+            
+            
             break;
         }
             
         case GAME_STATE_SCOREBOARD:
-            // Mostrar cursor
+            
             ShowCursor();
             
-            // Verificar tecla para voltar ao menu principal
+            
             if (IsKeyPressed(KEY_M)) {
                 game->currentState = GAME_STATE_MAIN_MENU;
             }
             
-            // O código existente de desenho será chamado na função DrawGame
+            
             break;
     }
 
-    // Atualizar textos na tela
+    
     UpdateScreenTexts(deltaTime);
 }
 
 void DrawGame(Game *game) {
-    // Desenhar o jogo com base no estado atual
+    
     switch (game->currentState) {
         case GAME_STATE_MAIN_MENU:
             DrawMainMenu();
-            DrawMinimalistCursor(); // Cursor personalizado
+            DrawMinimalistCursor(); 
             break;
             
         case GAME_STATE_TUTORIAL:
             DrawTutorialScreen();
-            DrawMinimalistCursor(); // Cursor personalizado
+            DrawMinimalistCursor(); 
             break;
             
         case GAME_STATE_PLAYING:
-            // Desenhar gameplay (jogo em andamento)
+            
             DrawGameplay(&game->player, &game->enemies, game->bullets, 
                          game->enemyBullets, game->powerups, game->score);
             
-            // Desenhar o boss se estiver ativo
+            
             if (game->bossActive && game->boss.active) {
                 DrawBoss(&game->boss);
             }
             
-            // Desenhar mensagem do boss se necessário
+            
             if (game->showBossMessage) {
                 const char *message = "BOSS APARECEU!";
                 int fontSize = 40;
                 int textWidth = MeasureText(message, fontSize);
                 
-                // Centralizar texto com fundo semi-transparente
+                
                 DrawRectangle(GetScreenWidth()/2 - textWidth/2 - 20, 
                               GetScreenHeight()/2 - fontSize/2 - 20,
                               textWidth + 40, 
@@ -1009,29 +1009,29 @@ void DrawGame(Game *game) {
                          GetScreenHeight()/2 - fontSize/2, 
                          fontSize, RED);
             }
-            // Desenhar textos narrativos
+            
             DrawScreenTexts();
             break;
             
         case GAME_STATE_PAUSED:
-            // Desenhar o jogo em pausa (mesmos elementos do gameplay, mas com menu de pausa)
+            
             DrawGameplay(&game->player, &game->enemies, game->bullets, 
                          game->enemyBullets, game->powerups, game->score);
             
-            // Sobrepor o menu de pausa
+            
             DrawPauseMenu();
-            DrawMinimalistCursor(); // Cursor personalizado
+            DrawMinimalistCursor(); 
             break;
             
         case GAME_STATE_GAME_OVER:
             if (game->showGameSummary) {
-                // Mostrar primeiro o resumo da partida
+                
                 DrawGameSummary(game->score, game->enemiesKilled, game->gameTime);
             } else {
-                // Depois mostrar a tela de game over comum
+                
                 DrawGameOverScreen(game->score);
             }
-            DrawMinimalistCursor(); // Cursor personalizado
+            DrawMinimalistCursor(); 
             break;
             
         case GAME_STATE_ENTER_NAME:
@@ -1040,7 +1040,7 @@ void DrawGame(Game *game) {
             
         case GAME_STATE_SCOREBOARD:
             RenderScoreboardScreen();
-            DrawMinimalistCursor(); // Cursor personalizado
+            DrawMinimalistCursor(); 
             break;
     }
 }

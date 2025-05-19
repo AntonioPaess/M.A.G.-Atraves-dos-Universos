@@ -1,23 +1,23 @@
 #include "bullet.h"
-#include <stdlib.h> // Para malloc, free
-#include "raymath.h" // Para Vector2Normalize, Vector2Scale
+#include <stdlib.h> 
+#include "raymath.h" 
 
 void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
     Bullet *newBullet = (Bullet *)malloc(sizeof(Bullet));
-    if (!newBullet) return; // Falha na alocação
+    if (!newBullet) return; 
 
     newBullet->position = startPosition;
-    // Normaliza a direção e aplica a velocidade
+    
     if (Vector2LengthSqr(direction) > 0) {
         newBullet->velocity = Vector2Scale(Vector2Normalize(direction), BULLET_SPEED);
     } else {
-        // Direção padrão se o mouse estiver no centro do jogador (ou outra lógica)
-        newBullet->velocity = (Vector2){0, -BULLET_SPEED}; // Atira para cima por padrão
+        
+        newBullet->velocity = (Vector2){0, -BULLET_SPEED}; 
     }
     newBullet->radius = BULLET_RADIUS;
     newBullet->active = true;
     newBullet->next = *head;
-    newBullet->damage = 1;  // Dano padrão
+    newBullet->damage = 1;  
     *head = newBullet;
 }
 
@@ -27,33 +27,33 @@ void UpdateBullets(Bullet **head, float deltaTime, int screenWidth, int screenHe
 
     while (current != NULL) {
         if (current->active) {
-            // Atualizar posição
+            
             current->position.x += current->velocity.x * deltaTime;
             current->position.y += current->velocity.y * deltaTime;
 
-            // Verificar colisão com as bordas para ricochete
+            
             if (current->canRicochet && current->ricochetsLeft > 0) {
-                // Verificar bordas da área circular
+                
                 extern float currentPlayAreaRadius;
                 Vector2 center = {PLAY_AREA_CENTER_X, PLAY_AREA_CENTER_Y};
                 float distToCenter = Vector2Distance(current->position, center);
                 
                 if (distToCenter >= currentPlayAreaRadius - current->radius) {
-                    // Calcular a normal na direção do centro
+                    
                     Vector2 normal = Vector2Normalize(Vector2Subtract(center, current->position));
                     
-                    // Calcular vetor de reflexão: r = d - 2(d·n)n
+                    
                     float dotProduct = Vector2DotProduct(current->velocity, normal);
                     Vector2 reflection = Vector2Subtract(
                         current->velocity,
                         Vector2Scale(normal, 2 * dotProduct)
                     );
                     
-                    // Aplicar reflexão
+                    
                     current->velocity = reflection;
                     current->ricochetsLeft--;
                     
-                    // Ajustar posição para evitar ficar preso na borda
+                    
                     current->position = Vector2Add(
                         center,
                         Vector2Scale(
@@ -64,7 +64,7 @@ void UpdateBullets(Bullet **head, float deltaTime, int screenWidth, int screenHe
                 }
             }
             
-            // Desativar se sair completamente da tela
+            
             if (current->position.x + current->radius < 0 ||
                 current->position.x - current->radius > screenWidth ||
                 current->position.y + current->radius < 0 ||
@@ -73,11 +73,11 @@ void UpdateBullets(Bullet **head, float deltaTime, int screenWidth, int screenHe
             }
         }
 
-        // Remover projéteis inativos
+        
         if (!current->active) {
             Bullet *toRemove = current;
             
-            if (prev == NULL) { // Cabeça da lista
+            if (prev == NULL) { 
                 *head = current->next;
                 current = *head;
             } else {
@@ -103,7 +103,7 @@ void FreeBullets(Bullet **head) {
     *head = NULL;
 }
 
-// Adicione a função:
+
 void AddBulletWithProps(Bullet **bulletsList, Vector2 position, Vector2 direction, float radius, int damage) {
     Bullet *bullet = (Bullet*)malloc(sizeof(Bullet));
     if (bullet) {
@@ -111,29 +111,29 @@ void AddBulletWithProps(Bullet **bulletsList, Vector2 position, Vector2 directio
         bullet->velocity = Vector2Scale(direction, BULLET_SPEED);
         bullet->active = true;
         bullet->radius = radius;
-        bullet->damage = damage;  // Dano personalizado
+        bullet->damage = damage;  
         bullet->next = *bulletsList;
         *bulletsList = bullet;
     }
 }
 
-// Adicione esta função para criar balas de ricochete
+
 void AddRicochetBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
     Bullet *newBullet = (Bullet *)malloc(sizeof(Bullet));
     if (!newBullet) return;
 
     newBullet->position = startPosition;
-    // Normaliza a direção e aplica a velocidade
+    
     if (Vector2LengthSqr(direction) > 0) {
-        newBullet->velocity = Vector2Scale(Vector2Normalize(direction), BULLET_SPEED * 1.5f); // Mais rápido
+        newBullet->velocity = Vector2Scale(Vector2Normalize(direction), BULLET_SPEED * 1.5f); 
     } else {
         newBullet->velocity = (Vector2){0, -BULLET_SPEED * 1.5f};
     }
-    newBullet->radius = BULLET_RADIUS * 1.2f; // Maior
+    newBullet->radius = BULLET_RADIUS * 1.2f; 
     newBullet->active = true;
     newBullet->damage = 1;
-    newBullet->canRicochet = true;  // Pode ricocheter
-    newBullet->ricochetsLeft = 1;   // Um ricochete
+    newBullet->canRicochet = true;  
+    newBullet->ricochetsLeft = 1;   
     newBullet->next = *head;
     *head = newBullet;
 }

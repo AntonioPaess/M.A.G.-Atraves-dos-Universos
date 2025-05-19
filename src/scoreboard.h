@@ -3,25 +3,25 @@
 
 #include "raylib.h"
 
-#define MAX_SCORES 10        // Número máximo de pontuações no placar
-#define MAX_NAME_LENGTH 50   // Tamanho máximo do nome do jogador
+#define MAX_SCORES 10        
+#define MAX_NAME_LENGTH 50   
 
-// Tipo de ordenação para o scoreboard
+
 typedef enum {
-    SORT_BY_SCORE,   // Ordenar por pontuação
-    SORT_BY_KILLS,   // Ordenar por inimigos mortos
-    SORT_BY_TIME     // Ordenar por tempo (menor primeiro)
+    SORT_BY_SCORE,   
+    SORT_BY_KILLS,   
+    SORT_BY_TIME     
 } SortType;
 
 typedef struct {
-    char name[MAX_NAME_LENGTH];  // Nome do jogador
-    long score;                  // Pontuação
-    int kills;                   // Inimigos mortos
-    float gameTime;              // Tempo de jogo em segundos
-    bool isNew;                  // Indica se é uma entrada nova
+    char name[MAX_NAME_LENGTH];  
+    long score;                  
+    int kills;                   
+    float gameTime;              
+    bool isNew;                  
 } ScoreEntry;
 
-// Funções para manipular o scoreboard
+
 void InitScoreboard(void);
 void AddScore(const char *name, long score, int kills, float gameTime);
 void SaveScoreboard(void);
@@ -34,9 +34,9 @@ bool IsHighKills(int kills);
 bool IsFastTime(float gameTime);
 void ResetNewFlags(void);
 
-// Funções auxiliares para obter informações
+
 int GetScoreCount(void);
 ScoreEntry GetScoreAt(int index);
-const char* FormatTime(float seconds); // Adicione esta linha
+const char* FormatTime(float seconds); 
 
-#endif // SCOREBOARD_H
+#endif 
