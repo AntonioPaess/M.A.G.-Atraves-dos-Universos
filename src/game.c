@@ -321,11 +321,9 @@ void HandleInput(Game *game, float deltaTime) {
 }
 
 void HandleCollisions(Game *game) {
-    
     Bullet *currentBullet = game->bullets;
     while (currentBullet != NULL) {
         if (currentBullet->active) {
-            
             Enemy *currentEnemy = game->enemies.head;
             Enemy *prevEnemy = NULL;
             while (currentEnemy != NULL) {
@@ -335,12 +333,10 @@ void HandleCollisions(Game *game) {
                         PlayGameSound(game->enemyExplodeSound);
                         currentBullet->active = false; 
                         
-                        
                         currentEnemy->health -= currentBullet->damage;
                         
-                        
                         if (currentEnemy->health <= 0) {
-                            
+                            // Efeitos especiais para inimigos explodentes
                             if (currentEnemy->type == ENEMY_TYPE_EXPLODER) {
                                 for (int i = 0; i < 8; i++) {
                                     float angle = i * (2.0f * PI / 8.0f);
@@ -349,24 +345,28 @@ void HandleCollisions(Game *game) {
                                 }
                             }
                             
-                            
+                            // CORREÇÃO: Primeiro guardar referências necessárias
                             Enemy* toRemove = currentEnemy;
-                            currentEnemy = currentEnemy->next;
-
-                            if (toRemove->prev == NULL) {
-                                
+                            Enemy* nextEnemy = currentEnemy->next;
+                            
+                            // CORREÇÃO: Atualizar ponteiros na lista ANTES de liberar memória
+                            if (prevEnemy == NULL) {
+                                // Se é o primeiro item da lista
                                 game->enemies.head = toRemove->next;
+                                // Se existe um próximo, atualizar seu prev
                                 if (game->enemies.head != NULL) {
                                     game->enemies.head->prev = NULL;
                                 }
                             } else {
-                                
-                                toRemove->prev->next = toRemove->next;
+                                // Se não é o primeiro item
+                                prevEnemy->next = toRemove->next;
+                                // Se existe um próximo, atualizar seu prev
                                 if (toRemove->next != NULL) {
-                                    toRemove->next->prev = toRemove->prev;
+                                    toRemove->next->prev = prevEnemy;
                                 }
                             }
-
+                            
+                            // CORREÇÃO: Só liberar APÓS atualizar todos os ponteiros
                             free(toRemove);
                             game->enemies.count--;
                             
@@ -374,46 +374,15 @@ void HandleCollisions(Game *game) {
                             game->enemiesKilled++;
                             
                             
+                            // ✅ VERIFICAÇÃO DE MILESTONE PARA MENSAGEM
                             if (game->enemiesKilled % 10 == 0 && game->enemiesKilled > 0) {
                                 const char* milestoneText = GetKillMilestoneText();
                                 ShowScreenText(milestoneText, 
                                               (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 50}, 
                                               25, GOLD, 3.0f, true);
                             }
-                            
-                            
-                            game->enemiesKilledSinceBoss++;
 
-                            
-                            if (game->enemiesKilledSinceBoss >= 50 && !game->bossActive) {
-                                
-                                float angle = GetRandomValue(0, 360) * DEG2RAD;
-                                float spawnDist = currentPlayAreaRadius + 100.0f;
-                                Vector2 spawnPos = {
-                                    PLAY_AREA_CENTER_X + cosf(angle) * spawnDist,
-                                    PLAY_AREA_CENTER_Y + sinf(angle) * spawnDist
-                                };
-                                
-                                
-                                InitBoss(&game->boss, spawnPos);
-                                game->bossActive = true;
-                                game->enemiesKilledSinceBoss = 0;
-                                
-                                
-                                game->showBossMessage = true;
-                                game->bossMessageTimer = 0.0f;
-                                
-                                
-                                const char* bossAppearText = GetBossAppearText();
-                                ShowScreenText(bossAppearText, 
-                                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
-                                              30, RED, 3.0f, true);
-                                
-                                
-                                PlayGameSound(game->enemyExplodeSound);
-                            }
-
-                            
+                            // ✅ LÓGICA DE SPAWN DE POWERUPS
                             if (game->enemiesKilled == game->nextPowerupAt) {
                                 
                                 float angle1 = GetRandomValue(0, 360) * DEG2RAD;
@@ -452,18 +421,59 @@ void HandleCollisions(Game *game) {
                             }
 
                             
-                            game->score += 100;
-                        } else {
+                            if (game->enemiesKilledSinceBoss >= 50 && !game->bossActive) {
+                                
+                                float angle = GetRandomValue(0, 360) * DEG2RAD;
+                                float spawnDist = currentPlayAreaRadius + 100.0f;
+                                Vector2 spawnPos = {
+                                    PLAY_AREA_CENTER_X + cosf(angle) * spawnDist,
+                                    PLAY_AREA_CENTER_Y + sinf(angle) * spawnDist
+                                };
+                                
+                                
+                                InitBoss(&game->boss, spawnPos);
+                                game->bossActive = true;
+                                game->enemiesKilledSinceBoss = 0;
+                                
+                                
+                                game->showBossMessage = true;
+                                game->bossMessageTimer = 0.0f;
+                                
+                                
+                                const char* bossAppearText = GetBossAppearText();
+                                ShowScreenText(bossAppearText, 
+                                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
+                                              30, RED, 3.0f, true);
+                                
+                                
+                                PlayGameSound(game->enemyExplodeSound);
+                            }
                             
+                            // Contabilizar para spawn do boss
+                            game->enemiesKilledSinceBoss++;
+                            
+                            // Pontuação
+                            game->score += 100;
+                            
+
+                            currentEnemy = nextEnemy;
+                        } else {
+                            // Se o inimigo não morreu, continuar percorrendo
                             prevEnemy = currentEnemy;
                             currentEnemy = currentEnemy->next;
                         }
                         
-                        break; 
+                        break; // Sair do loop de inimigos para esta bala
+                    } else {
+                        // Se não houve colisão, continuar percorrendo
+                        prevEnemy = currentEnemy;
+                        currentEnemy = currentEnemy->next;
                     }
+                } else {
+                    // Se o inimigo não está ativo, continuar percorrendo
+                    prevEnemy = currentEnemy;
+                    currentEnemy = currentEnemy->next;
                 }
-                prevEnemy = currentEnemy;
-                if (currentEnemy) currentEnemy = currentEnemy->next;
             }
         }
         currentBullet = currentBullet->next;
@@ -666,7 +676,6 @@ void HandleCollisions(Game *game) {
                         game->player.blinkTimer = BLINK_FREQUENCY;
                     }
                 }
-                
                 
                 break;
             }
@@ -906,12 +915,6 @@ void UpdateGame(Game *game, float deltaTime) {
                 
                 game->currentState = GAME_STATE_MAIN_MENU;
             }
-            
-            else if (game->showGameSummary && 
-                    (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || 
-                     IsMouseButtonPressed(MOUSE_LEFT_BUTTON))) {
-                game->showGameSummary = false;
-            }
             break;
             
         case GAME_STATE_ENTER_NAME: {
@@ -1027,9 +1030,6 @@ void DrawGame(Game *game) {
             if (game->showGameSummary) {
                 
                 DrawGameSummary(game->score, game->enemiesKilled, game->gameTime);
-            } else {
-                
-                DrawGameOverScreen(game->score);
             }
             DrawMinimalistCursor(); 
             break;

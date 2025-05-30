@@ -1,11 +1,15 @@
 #include "bullet.h"
-#include <stdlib.h> 
+#include <stdlib.h>
+ #include <string.h> 
+#include <stdio.h> 
 #include "raymath.h" 
 
 void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
     Bullet *newBullet = (Bullet *)malloc(sizeof(Bullet));
     if (!newBullet) return; 
 
+    memset(newBullet, 0, sizeof(Bullet));  // Zerar toda a estrutura primeiro
+    
     newBullet->position = startPosition;
     
     if (Vector2LengthSqr(direction) > 0) {
@@ -15,80 +19,97 @@ void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
         newBullet->velocity = (Vector2){0, -BULLET_SPEED}; 
     }
     newBullet->radius = BULLET_RADIUS;
-    newBullet->active = true;
-    newBullet->next = *head;
+    newBullet->active = true;  // GARANTIR QUE É true (1), não garbage
     newBullet->damage = 1;  
+    newBullet->next = *head;
     *head = newBullet;
 }
 
-void UpdateBullets(Bullet **head, float deltaTime, int screenWidth, int screenHeight) {
-    Bullet *current = *head;
-    Bullet *prev = NULL;
-
-    while (current != NULL) {
-        if (current->active) {
+void UpdateBullets(Bullet **bullets, float deltaTime, int screenWidth, int screenHeight) {
+    Bullet *currentBullet = *bullets;
+    Bullet *prevBullet = NULL;
+    
+    while (currentBullet != NULL) {
+        // VERIFICAÇÃO DE SEGURANÇA PARA MEMÓRIA CORROMPIDA
+        if ((uintptr_t)currentBullet < 1024) {
+            printf("ERRO: Ponteiro de bullet corrompido: %p\n", (void*)currentBullet);
+            break;
+        }
+        
+        // VERIFICAR SE TODOS OS CAMPOS BOOL TÊM VALORES VÁLIDOS
+        if (currentBullet->active != 0 && currentBullet->active != 1) {
+            printf("ERRO: Campo active corrompido: %d\n", currentBullet->active);
+            currentBullet->active = false;
+        }
+        
+        if (currentBullet->canRicochet != 0 && currentBullet->canRicochet != 1) {
+            printf("ERRO: Campo canRicochet corrompido: %d\n", currentBullet->canRicochet);
+            currentBullet->canRicochet = false;
+        }
+        
+        if (currentBullet->active) {
             
-            current->position.x += current->velocity.x * deltaTime;
-            current->position.y += current->velocity.y * deltaTime;
+            currentBullet->position.x += currentBullet->velocity.x * deltaTime;
+            currentBullet->position.y += currentBullet->velocity.y * deltaTime;
 
             
-            if (current->canRicochet && current->ricochetsLeft > 0) {
+            if (currentBullet->canRicochet && currentBullet->ricochetsLeft > 0) {
                 
                 extern float currentPlayAreaRadius;
                 Vector2 center = {PLAY_AREA_CENTER_X, PLAY_AREA_CENTER_Y};
-                float distToCenter = Vector2Distance(current->position, center);
+                float distToCenter = Vector2Distance(currentBullet->position, center);
                 
-                if (distToCenter >= currentPlayAreaRadius - current->radius) {
+                if (distToCenter >= currentPlayAreaRadius - currentBullet->radius) {
                     
-                    Vector2 normal = Vector2Normalize(Vector2Subtract(center, current->position));
+                    Vector2 normal = Vector2Normalize(Vector2Subtract(center, currentBullet->position));
                     
                     
-                    float dotProduct = Vector2DotProduct(current->velocity, normal);
+                    float dotProduct = Vector2DotProduct(currentBullet->velocity, normal);
                     Vector2 reflection = Vector2Subtract(
-                        current->velocity,
+                        currentBullet->velocity,
                         Vector2Scale(normal, 2 * dotProduct)
                     );
                     
                     
-                    current->velocity = reflection;
-                    current->ricochetsLeft--;
+                    currentBullet->velocity = reflection;
+                    currentBullet->ricochetsLeft--;
                     
                     
-                    current->position = Vector2Add(
+                    currentBullet->position = Vector2Add(
                         center,
                         Vector2Scale(
-                            Vector2Normalize(Vector2Subtract(current->position, center)),
-                            currentPlayAreaRadius - current->radius - 2.0f
+                            Vector2Normalize(Vector2Subtract(currentBullet->position, center)),
+                            currentPlayAreaRadius - currentBullet->radius - 2.0f
                         )
                     );
                 }
             }
             
             
-            if (current->position.x + current->radius < 0 ||
-                current->position.x - current->radius > screenWidth ||
-                current->position.y + current->radius < 0 ||
-                current->position.y - current->radius > screenHeight) {
-                current->active = false;
+            if (currentBullet->position.x + currentBullet->radius < 0 ||
+                currentBullet->position.x - currentBullet->radius > screenWidth ||
+                currentBullet->position.y + currentBullet->radius < 0 ||
+                currentBullet->position.y - currentBullet->radius > screenHeight) {
+                currentBullet->active = false;
             }
         }
 
         
-        if (!current->active) {
-            Bullet *toRemove = current;
+        if (!currentBullet->active) {
+            Bullet *toRemove = currentBullet;
             
-            if (prev == NULL) { 
-                *head = current->next;
-                current = *head;
+            if (prevBullet == NULL) { 
+                *bullets = currentBullet->next;
+                currentBullet = *bullets;
             } else {
-                prev->next = current->next;
-                current = current->next;
+                prevBullet->next = currentBullet->next;
+                currentBullet = currentBullet->next;
             }
             
             free(toRemove);
         } else {
-            prev = current;
-            current = current->next;
+            prevBullet = currentBullet;
+            currentBullet = currentBullet->next;
         }
     }
 }
@@ -107,11 +128,19 @@ void FreeBullets(Bullet **head) {
 void AddBulletWithProps(Bullet **bulletsList, Vector2 position, Vector2 direction, float radius, int damage) {
     Bullet *bullet = (Bullet*)malloc(sizeof(Bullet));
     if (bullet) {
+        // INICIALIZAR TODA A ESTRUTURA PRIMEIRO
+        memset(bullet, 0, sizeof(Bullet));
+        
         bullet->position = position;
         bullet->velocity = Vector2Scale(direction, BULLET_SPEED);
         bullet->active = true;
         bullet->radius = radius;
-        bullet->damage = damage;  
+        bullet->damage = damage;
+        
+        // GARANTIR QUE CAMPOS BOOL ESTÃO CORRETOS
+        bullet->canRicochet = false;    // Inicializar explicitamente
+        bullet->ricochetsLeft = 0;      // Inicializar explicitamente
+        
         bullet->next = *bulletsList;
         *bulletsList = bullet;
     }
@@ -121,6 +150,8 @@ void AddBulletWithProps(Bullet **bulletsList, Vector2 position, Vector2 directio
 void AddRicochetBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
     Bullet *newBullet = (Bullet *)malloc(sizeof(Bullet));
     if (!newBullet) return;
+
+    memset(newBullet, 0, sizeof(Bullet));
 
     newBullet->position = startPosition;
     

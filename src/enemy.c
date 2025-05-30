@@ -2,6 +2,7 @@
 #include <stdlib.h> 
 #include "raymath.h" 
 #include <math.h>    
+#include <stdio.h>
 
 void InitEnemyList(EnemyList *list) {
     list->head = NULL;
@@ -134,9 +135,17 @@ void UpdateEnemies(EnemyList *list, Vector2 playerPosition, float deltaTime,
                   int screenWidth, int screenHeight, 
                   Bullet **playerBullets, Bullet **enemyBullets) {
     Enemy *currentEnemy = list->head;
+    Enemy *prevEnemy = NULL;
     
     while (currentEnemy != NULL) {
-        Enemy *nextEnemy = currentEnemy->next; 
+        // VERIFICAÇÃO DE SEGURANÇA 
+        if ((uintptr_t)currentEnemy < 1024) {
+            printf("ERRO: Ponteiro de enemy corrompido: %p\n", (void*)currentEnemy);
+            break;
+        }
+        
+        // Guarde o próximo inimigo de forma segura
+        Enemy *nextEnemy = currentEnemy->next;
         
         if (currentEnemy->active) {
             
@@ -184,7 +193,8 @@ void UpdateEnemies(EnemyList *list, Vector2 playerPosition, float deltaTime,
             }
         }
         
-        currentEnemy = nextEnemy;
+        prevEnemy = currentEnemy;
+        currentEnemy = nextEnemy; // Use a referência salva anteriormente
     }
 }
 
