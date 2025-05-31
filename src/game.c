@@ -84,6 +84,11 @@ void ResetGame(Game *game) {
     game->showBossMessage = false;
     game->bossMessageTimer = 0.0f;
 
+    // Reiniciar as recompensas do boss
+    game->activeBossReward = BOSS_REWARD_NONE;
+    game->hasBossReward = false;
+    game->bossRewardTimer = 0.0f;
+
     
     game->gameTime = 0.0f;
     game->showGameSummary = false;
@@ -295,13 +300,11 @@ void SpawnEnemies(Game *game) {
 void HandleInput(Game *game, float deltaTime) {
     // Atualizar cooldown de tiro
     if (game->shootCooldown > 0) {
-        // Se tem o power-up de tiro rápido, reduz o cooldown pela metade
-        float cooldownMultiplier = (game->hasBossReward && game->activeBossReward == BOSS_REWARD_RAPID_FIRE) ? 0.5f : 1.0f;
-        game->shootCooldown -= deltaTime * cooldownMultiplier;
+        // Redução normal do cooldown para todos os tipos
+        game->shootCooldown -= deltaTime;
     }
     
     // Atirar enquanto o botão é mantido pressionado
-    // Mudança: IsMouseButtonPressed -> IsMouseButtonDown
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && game->shootCooldown <= 0) {
         // Obter direção do tiro
         Vector2 mousePos = GetMousePosition();
@@ -340,14 +343,15 @@ void HandleInput(Game *game, float deltaTime) {
                     }
                     break;
                     
-                case BOSS_REWARD_PENETRATION:
-                    // Tiros penetrantes (implementado na função HandleCollisions)
-                    AddPenetratingBullet(&game->bullets, game->player.position, direction);
-                    break;
                     
                 case BOSS_REWARD_HOMING:
-                    // Tiros teleguiados
+                    // Tiros teleguiados - corrigido para 4 parâmetros
                     AddHomingBullet(&game->bullets, game->player.position, direction);
+                    break;
+                    
+                case BOSS_REWARD_QUICANTE:
+                    // Tiros que quicam uma vez na parede
+                    AddRicochetBullet(&game->bullets, game->player.position, direction);
                     break;
                     
                 default:
@@ -356,11 +360,17 @@ void HandleInput(Game *game, float deltaTime) {
             }
         } else {
             // Tiro normal quando não tem power-up
-            AddBullet(&game->bullets, game->player.position, direction, true); // Tiro do jogador
+            AddBullet(&game->bullets, game->player.position, direction, true);
         }
         
         PlayGameSound(game->shootSound);
-        game->shootCooldown = SHOOT_COOLDOWN;
+        
+        // MODIFICADO: Definir o cooldown apropriado com base no power-up
+        if (game->hasBossReward && game->activeBossReward == BOSS_REWARD_RAPID_FIRE) {
+            game->shootCooldown = 0.11f; // Metade do cooldown normal
+        } else {
+            game->shootCooldown = SHOOT_COOLDOWN; // Valor normal (0.22)
+        }
     }
 }
 
@@ -424,7 +434,6 @@ void HandleCollisions(Game *game) {
                             } else {
                                 // Se não é o primeiro item
                                 prevEnemy->next = toRemove->next;
-                                // Se existe um próximo, atualizar seu prev
                                 if (toRemove->next != NULL) {
                                     toRemove->next->prev = prevEnemy;
                                 }
@@ -438,7 +447,7 @@ void HandleCollisions(Game *game) {
                             game->enemiesKilled++;
                             
                             
-                            // ✅ VERIFICAÇÃO DE MILESTONE PARA MENSAGEM
+                            
                             if (game->enemiesKilled % 10 == 0 && game->enemiesKilled > 0) {
                                 const char* milestoneText = GetKillMilestoneText();
                                 ShowScreenText(milestoneText, 
@@ -446,7 +455,7 @@ void HandleCollisions(Game *game) {
                                               25, GOLD, 3.0f, true);
                             }
 
-                            // ✅ LÓGICA DE SPAWN DE POWERUPS
+                           
                             if (game->enemiesKilled == game->nextPowerupAt) {
                                 
                                 float angle1 = GetRandomValue(0, 360) * DEG2RAD;
@@ -485,7 +494,7 @@ void HandleCollisions(Game *game) {
                             }
 
                             
-                            if (game->enemiesKilledSinceBoss >= 50 && !game->bossActive) {
+                            if (game->enemiesKilledSinceBoss >= 50 && !game->bossActive) {  
                                 
                                 // Gerar posição de spawn
                                 float angle = GetRandomValue(0, 360) * DEG2RAD;
@@ -591,10 +600,10 @@ void HandleCollisions(Game *game) {
                         game->score += 4000; 
                         
                         // Conceder recompensa aleatória ao jogador
-                        BossRewardType reward = GetRandomValue(1, 5); // Escolhe um power-up aleatório (1-5)
+                        BossRewardType reward = GetRandomValue(1, 4); // Escolhe um power-up aleatório (1-5)
                         game->activeBossReward = reward;
                         game->hasBossReward = true;
-                        game->bossRewardTimer = 40.0f; // 40 segundos de duração
+                        game->bossRewardTimer = 10.0f;
                         
                         // Mostrar mensagem sobre o power-up obtido
                         const char* rewardMessage;
@@ -609,17 +618,13 @@ void HandleCollisions(Game *game) {
                                 rewardMessage = "DISPARO RÁPIDO OBTIDO!";
                                 rewardColor = YELLOW;
                                 break;
-                            case BOSS_REWARD_PENETRATION:
-                                rewardMessage = "TIROS PENETRANTES OBTIDOS!";
+                            case BOSS_REWARD_QUICANTE:
+                                rewardMessage = "TIROS QUICANTES OBTIDOS!";
                                 rewardColor = PURPLE;
                                 break;
                             case BOSS_REWARD_TRIPLE_SHOT:
                                 rewardMessage = "TIRO TRIPLO OBTIDO!";
                                 rewardColor = GREEN;
-                                break;
-                            case BOSS_REWARD_HOMING:
-                                rewardMessage = "TIROS TELEGUIADOS OBTIDOS!";
-                                rewardColor = ORANGE;
                                 break;
                             default:
                                 rewardMessage = "PODER ESPECIAL OBTIDO!";
@@ -870,6 +875,7 @@ void InitGame(Game *game) {
     
     
     game->increasedDamage = false;
+    increasedDamage = false;  // Inicializa a variável global também
 
     
     game->bossActive = false;
@@ -1069,6 +1075,7 @@ void UpdateGame(Game *game, float deltaTime) {
                     case POWERUP_DAMAGE:
                         PlayGameSound(game->powerupDamageSound);
                         increasedDamage = true;  // Ativar dano aumentado
+                        game->increasedDamage = true;  // Manter sincronizado
                         
                         // Mostrar mensagem na tela
                         ShowScreenText("DANO AUMENTADO!", 
@@ -1134,6 +1141,22 @@ void UpdateGame(Game *game, float deltaTime) {
                 ShowScreenText(wisdomText, 
                               (Vector2){GetScreenWidth()/2, 100}, 
                               24, PURPLE, 5.0f, true);
+            }
+            
+            // Gerenciar temporizador do power-up do boss
+            if (game->hasBossReward) {
+                game->bossRewardTimer -= deltaTime;
+                
+                if (game->bossRewardTimer <= 0.0f) {
+                    // Quando o tempo acabar, desativar o poder
+                    game->hasBossReward = false;
+                    game->activeBossReward = BOSS_REWARD_NONE;
+                    
+                    // Mostrar mensagem quando o poder acabar
+                    ShowScreenText("PODER ESPECIAL ESGOTADO", 
+                                  (Vector2){GetScreenWidth()/2, GetScreenHeight()/2}, 
+                                  25, GRAY, 2.0f, true);
+                }
             }
             break;
 
@@ -1273,16 +1296,12 @@ void DrawGame(Game *game) {
                          fontSize, RED);
             }
             
-            // Desenhar temporizador do power-up do boss
             if (game->hasBossReward) {
-                if (game->bossRewardTimer <= 10.0f) {
-                    // Piscar quando estiver acabando
-                    if ((int)(game->bossRewardTimer * 2) % 2 == 0) {
-                        const char* timeText = TextFormat("POWER-UP: %.1f", game->bossRewardTimer);
-                        DrawText(timeText, 10, GetScreenHeight() - 30, 20, RED);
-                    }
+                if (game->activeBossReward == BOSS_REWARD_RAPID_FIRE) {
+                    const char* timeText = TextFormat("DISPARO RÁPIDO: %.1f", game->bossRewardTimer);
+                    DrawText(timeText, 10, GetScreenHeight() - 30, 20, RED);
                 } else {
-                    const char* timeText = TextFormat("POWER-UP: %.1f", game->bossRewardTimer);
+                    const char* timeText = TextFormat("PODER ESPECIAL: %.1f", game->bossRewardTimer);
                     DrawText(timeText, 10, GetScreenHeight() - 30, 20, WHITE);
                 }
             }

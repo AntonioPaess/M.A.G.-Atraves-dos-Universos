@@ -26,7 +26,7 @@ typedef enum {
     BOSS_REWARD_NONE,
     BOSS_REWARD_DOUBLE_SHOT,  // Tiro duplo
     BOSS_REWARD_RAPID_FIRE,   // Disparo rápido
-    BOSS_REWARD_PENETRATION,  // Tiros penetrantes
+    BOSS_REWARD_QUICANTE,     // Tiros que quicam uma vez (alterado de PENETRATION)
     BOSS_REWARD_TRIPLE_SHOT,  // Tiro triplo
     BOSS_REWARD_HOMING        // Tiros teleguiados
 } BossRewardType;
