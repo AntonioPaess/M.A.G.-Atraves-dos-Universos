@@ -10,6 +10,7 @@
 #include "scoreboard.h" 
 
 #define MAX_NAME_LENGTH 50  
+#define SHOOT_COOLDOWN 0.22f  // Tempo em segundos entre disparos
 
 typedef enum {
     GAME_STATE_MAIN_MENU,  
@@ -20,6 +21,15 @@ typedef enum {
     GAME_STATE_ENTER_NAME,   
     GAME_STATE_SCOREBOARD    
 } GameState;
+
+typedef enum {
+    BOSS_REWARD_NONE,
+    BOSS_REWARD_DOUBLE_SHOT,  // Tiro duplo
+    BOSS_REWARD_RAPID_FIRE,   // Disparo rápido
+    BOSS_REWARD_PENETRATION,  // Tiros penetrantes
+    BOSS_REWARD_TRIPLE_SHOT,  // Tiro triplo
+    BOSS_REWARD_HOMING        // Tiros teleguiados
+} BossRewardType;
 
 typedef struct Game {
     Player player;
@@ -89,6 +99,11 @@ typedef struct Game {
     bool bossMusicFadeIn;
     float bossMusicFadeTimer;
 
+    // Novos campos para gerenciar a recompensa do boss
+    BossRewardType activeBossReward;
+    float bossRewardTimer;
+    bool hasBossReward;
+
 } Game;
 
 
@@ -96,5 +111,7 @@ void InitGame(Game *game);
 void ResetGame(Game *game);
 void UpdateGame(Game *game, float deltaTime);
 void DrawGame(Game *game);  
+
+extern bool increasedDamage;  // Declaração para uso em outros arquivos
 
 #endif

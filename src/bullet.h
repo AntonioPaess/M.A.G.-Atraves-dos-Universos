@@ -15,10 +15,14 @@ typedef struct Bullet {
     struct Bullet *next;
 } Bullet;
 
-void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction);
+void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction, bool isPlayerBullet);
 void AddBulletWithProps(Bullet **head, Vector2 startPosition, Vector2 direction, float radius, int damage);
 void AddRicochetBullet(Bullet **head, Vector2 startPosition, Vector2 direction); 
 void UpdateBullets(Bullet **head, float deltaTime, int screenWidth, int screenHeight);
 void DestroyBullets(Bullet **head);
 
-#endif 
+// Adicione estas declarações junto com as outras funções de balas
+void AddPenetratingBullet(Bullet **head, Vector2 startPosition, Vector2 direction);
+void AddHomingBullet(Bullet **head, Vector2 startPosition, Vector2 direction);
+
+#endif

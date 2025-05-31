@@ -122,7 +122,7 @@ void UpdateShooterEnemy(Enemy *enemy, Vector2 playerPosition, float deltaTime, B
                 sinf(newAngle)
             };
             
-            AddBullet(enemyBullets, enemy->position, shootDirection);
+            AddBullet(enemyBullets, enemy->position, shootDirection, false); // Tiro de inimigo
         }
     }
     

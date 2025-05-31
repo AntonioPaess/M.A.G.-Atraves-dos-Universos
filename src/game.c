@@ -16,6 +16,8 @@
 
 extern float currentPlayAreaRadius;
 
+bool increasedDamage = false;  // Definição global da variável
+
 void ResetGame(Game *game) {
     
     Enemy *currentEnemy = game->enemies.head;
@@ -73,6 +75,8 @@ void ResetGame(Game *game) {
     game->enemiesKilled = 0;
     game->nextPowerupAt = 10;
     game->increasedDamage = false;
+    
+    increasedDamage = false;  // Reinicia o dano da bala para o padrão
 
     
     game->bossActive = false;
@@ -289,34 +293,74 @@ void SpawnEnemies(Game *game) {
 }
 
 void HandleInput(Game *game, float deltaTime) {
-    
+    // Atualizar cooldown de tiro
     if (game->shootCooldown > 0) {
-        game->shootCooldown -= deltaTime;
+        // Se tem o power-up de tiro rápido, reduz o cooldown pela metade
+        float cooldownMultiplier = (game->hasBossReward && game->activeBossReward == BOSS_REWARD_RAPID_FIRE) ? 0.5f : 1.0f;
+        game->shootCooldown -= deltaTime * cooldownMultiplier;
     }
-
     
-    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && game->shootCooldown <= 0) {
+    // Atirar enquanto o botão é mantido pressionado
+    // Mudança: IsMouseButtonPressed -> IsMouseButtonDown
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && game->shootCooldown <= 0) {
+        // Obter direção do tiro
         Vector2 mousePos = GetMousePosition();
-        Vector2 direction = {0};
+        Vector2 direction = Vector2Normalize(Vector2Subtract(mousePos, game->player.position));
         
-        
-        Vector2 diff = Vector2Subtract(mousePos, game->player.position);
-        direction = Vector2Normalize(diff);
-        
-        
-        Vector2 bulletStartPosition = game->player.position;
-
-        if (game->increasedDamage) {
-            
-            AddBulletWithProps(&game->bullets, bulletStartPosition, direction, BULLET_RADIUS * 1.5f, 2);
+        // Aplicar power-ups de tiro
+        if (game->hasBossReward) {
+            switch (game->activeBossReward) {
+                case BOSS_REWARD_DOUBLE_SHOT:
+                    // Tiro duplo: dois projéteis paralelos
+                    {
+                        Vector2 perpendicular = {-direction.y, direction.x};
+                        perpendicular = Vector2Scale(perpendicular, 10.0f);
+                        
+                        Vector2 pos1 = Vector2Add(game->player.position, perpendicular);
+                        Vector2 pos2 = Vector2Subtract(game->player.position, perpendicular);
+                        
+                        AddBullet(&game->bullets, pos1, direction, true);
+                        AddBullet(&game->bullets, pos2, direction, true);
+                    }
+                    break;
+                    
+                case BOSS_REWARD_TRIPLE_SHOT:
+                    // Tiro triplo: três projéteis em leque
+                    {
+                        AddBullet(&game->bullets, game->player.position, direction, true);
+                        
+                        float angle1 = atan2f(direction.y, direction.x) - 0.2f;
+                        float angle2 = atan2f(direction.y, direction.x) + 0.2f;
+                        
+                        Vector2 dir1 = {cosf(angle1), sinf(angle1)};
+                        Vector2 dir2 = {cosf(angle2), sinf(angle2)};
+                        
+                        AddBullet(&game->bullets, game->player.position, dir1, true);
+                        AddBullet(&game->bullets, game->player.position, dir2, true);
+                    }
+                    break;
+                    
+                case BOSS_REWARD_PENETRATION:
+                    // Tiros penetrantes (implementado na função HandleCollisions)
+                    AddPenetratingBullet(&game->bullets, game->player.position, direction);
+                    break;
+                    
+                case BOSS_REWARD_HOMING:
+                    // Tiros teleguiados
+                    AddHomingBullet(&game->bullets, game->player.position, direction);
+                    break;
+                    
+                default:
+                    // Tiro normal
+                    AddBullet(&game->bullets, game->player.position, direction, true);
+            }
         } else {
-            
-            AddBullet(&game->bullets, bulletStartPosition, direction);
+            // Tiro normal quando não tem power-up
+            AddBullet(&game->bullets, game->player.position, direction, true); // Tiro do jogador
         }
+        
         PlayGameSound(game->shootSound);
-        
-        
-        game->shootCooldown = 0.2f;
+        game->shootCooldown = SHOOT_COOLDOWN;
     }
 }
 
@@ -341,7 +385,7 @@ void HandleCollisions(Game *game) {
                                 for (int i = 0; i < 8; i++) {
                                     float angle = i * (2.0f * PI / 8.0f);
                                     Vector2 direction = {cosf(angle), sinf(angle)};
-                                    AddBullet(&game->enemyBullets, currentEnemy->position, direction);
+                                    AddBullet(&game->enemyBullets, currentEnemy->position, direction, false);
                                 }
                             }
                             
@@ -443,6 +487,7 @@ void HandleCollisions(Game *game) {
                             
                             if (game->enemiesKilledSinceBoss >= 50 && !game->bossActive) {
                                 
+                                // Gerar posição de spawn
                                 float angle = GetRandomValue(0, 360) * DEG2RAD;
                                 float spawnDist = currentPlayAreaRadius + 100.0f;
                                 Vector2 spawnPos = {
@@ -450,22 +495,48 @@ void HandleCollisions(Game *game) {
                                     PLAY_AREA_CENTER_Y + sinf(angle) * spawnDist
                                 };
                                 
-                                
+                                // Inicializar o boss
                                 InitBoss(&game->boss, spawnPos);
+                                
+                                // NOVO: Selecionar uma forma aleatória (1-4)
+                                int randomLayer = GetRandomValue(1, 4);
+                                game->boss.currentLayer = randomLayer;
+                                
+                                // Definir a saúde correta para a camada escolhida
+                                switch (randomLayer) {
+                                    case 4:
+                                        game->boss.layerHealth = BOSS_LAYER4_HEALTH;
+                                        game->boss.maxLayerHealth = BOSS_LAYER4_HEALTH;
+                                        break;
+                                    case 3:
+                                        game->boss.layerHealth = BOSS_LAYER3_HEALTH;
+                                        game->boss.maxLayerHealth = BOSS_LAYER3_HEALTH;
+                                        break;
+                                    case 2:
+                                        game->boss.layerHealth = BOSS_LAYER2_HEALTH;
+                                        game->boss.maxLayerHealth = BOSS_LAYER2_HEALTH;
+                                        break;
+                                    case 1:
+                                        game->boss.layerHealth = BOSS_LAYER1_HEALTH;
+                                        game->boss.maxLayerHealth = BOSS_LAYER1_HEALTH;
+                                        game->boss.dashCooldown = BOSS_DASH_COOLDOWN;
+                                        break;
+                                }
+                                
                                 game->bossActive = true;
                                 game->enemiesKilledSinceBoss = 0;
                                 
-                                
+                                // Mostrar mensagem
                                 game->showBossMessage = true;
                                 game->bossMessageTimer = 0.0f;
                                 
-                                
+                                // Exibir texto do boss
                                 const char* bossAppearText = GetBossAppearText();
                                 ShowScreenText(bossAppearText, 
                                               (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
                                               30, RED, 3.0f, true);
                                 
-                                
+                                // Trocar a música
                                 StopMusicStream(game->backgroundMusic);
                                 PlayMusicStream(game->bossMusic);
                             }
@@ -519,11 +590,55 @@ void HandleCollisions(Game *game) {
                         game->bossActive = false;
                         game->score += 4000; 
                         
+                        // Conceder recompensa aleatória ao jogador
+                        BossRewardType reward = GetRandomValue(1, 5); // Escolhe um power-up aleatório (1-5)
+                        game->activeBossReward = reward;
+                        game->hasBossReward = true;
+                        game->bossRewardTimer = 40.0f; // 40 segundos de duração
                         
+                        // Mostrar mensagem sobre o power-up obtido
+                        const char* rewardMessage;
+                        Color rewardColor;
+                        
+                        switch (reward) {
+                            case BOSS_REWARD_DOUBLE_SHOT:
+                                rewardMessage = "TIRO DUPLO OBTIDO!";
+                                rewardColor = SKYBLUE;
+                                break;
+                            case BOSS_REWARD_RAPID_FIRE:
+                                rewardMessage = "DISPARO RÁPIDO OBTIDO!";
+                                rewardColor = YELLOW;
+                                break;
+                            case BOSS_REWARD_PENETRATION:
+                                rewardMessage = "TIROS PENETRANTES OBTIDOS!";
+                                rewardColor = PURPLE;
+                                break;
+                            case BOSS_REWARD_TRIPLE_SHOT:
+                                rewardMessage = "TIRO TRIPLO OBTIDO!";
+                                rewardColor = GREEN;
+                                break;
+                            case BOSS_REWARD_HOMING:
+                                rewardMessage = "TIROS TELEGUIADOS OBTIDOS!";
+                                rewardColor = ORANGE;
+                                break;
+                            default:
+                                rewardMessage = "PODER ESPECIAL OBTIDO!";
+                                rewardColor = WHITE;
+                        }
+                        
+                        ShowScreenText(rewardMessage, 
+                                      (Vector2){GetScreenWidth()/2, GetScreenHeight()/2}, 
+                                      30, rewardColor, 4.0f, true);
+                        
+                        // Texto de derrota do boss (mantenha o que já existe)
                         const char* bossDefeatText = GetBossDefeatText();
                         ShowScreenText(bossDefeatText, 
                                       (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
                                       30, RED, 4.0f, true);
+                          
+                        // Trocar música de volta para a normal
+                        StopMusicStream(game->bossMusic);
+                        PlayMusicStream(game->backgroundMusic);
                     } 
                     else if (game->boss.isTransitioning) {
                         
@@ -780,6 +895,11 @@ void InitGame(Game *game) {
     // Inicializar variáveis de fade da música
     game->bossMusicFadeIn = false;
     game->bossMusicFadeTimer = 0.0f;
+
+    // Inicializar campos de recompensa do boss
+    game->activeBossReward = BOSS_REWARD_NONE;
+    game->bossRewardTimer = 0.0f;
+    game->hasBossReward = false;
 }
 
 void UpdateGame(Game *game, float deltaTime) {
@@ -948,7 +1068,14 @@ void UpdateGame(Game *game, float deltaTime) {
                 switch (collectedType) {
                     case POWERUP_DAMAGE:
                         PlayGameSound(game->powerupDamageSound);
-                        game->increasedDamage = true;
+                        increasedDamage = true;  // Ativar dano aumentado
+                        
+                        // Mostrar mensagem na tela
+                        ShowScreenText("DANO AUMENTADO!", 
+                                      (Vector2){game->player.position.x, game->player.position.y - 30}, 
+                                      25, RED, 2.0f, true);
+                        
+                        // Reduzir uma vida como custo (se tiver mais que 1)
                         if (game->player.lives > 1) {
                             game->player.lives--;
                         }
@@ -956,13 +1083,27 @@ void UpdateGame(Game *game, float deltaTime) {
                         
                     case POWERUP_HEAL:
                         PlayGameSound(game->powerupHealSound);
+                        
+                        // Restaurar todas as vidas
                         game->player.lives = 3;
+                        
+                        // Mostrar mensagem na tela
+                        ShowScreenText("VIDAS RESTAURADAS!", 
+                                      (Vector2){game->player.position.x, game->player.position.y - 30}, 
+                                      25, GREEN, 2.0f, true);
                         break;
                         
                     case POWERUP_SHIELD:
                         PlayGameSound(game->powerupShieldSound);
+                        
+                        // Ativar o escudo
                         game->player.hasShield = true;
-                        game->player.shieldTimer = 15.0f;
+                        game->player.shieldTimer = 15.0f; // 15 segundos de duração
+                        
+                        // Mostrar mensagem na tela
+                        ShowScreenText("ESCUDO ATIVADO!", 
+                                      (Vector2){game->player.position.x, game->player.position.y - 30}, 
+                                      25, BLUE, 2.0f, true);
                         break;
                 }
             }
@@ -1130,6 +1271,20 @@ void DrawGame(Game *game) {
                          GetScreenWidth()/2 - textWidth/2, 
                          GetScreenHeight()/2 - fontSize/2, 
                          fontSize, RED);
+            }
+            
+            // Desenhar temporizador do power-up do boss
+            if (game->hasBossReward) {
+                if (game->bossRewardTimer <= 10.0f) {
+                    // Piscar quando estiver acabando
+                    if ((int)(game->bossRewardTimer * 2) % 2 == 0) {
+                        const char* timeText = TextFormat("POWER-UP: %.1f", game->bossRewardTimer);
+                        DrawText(timeText, 10, GetScreenHeight() - 30, 20, RED);
+                    }
+                } else {
+                    const char* timeText = TextFormat("POWER-UP: %.1f", game->bossRewardTimer);
+                    DrawText(timeText, 10, GetScreenHeight() - 30, 20, WHITE);
+                }
             }
             
             DrawScreenTexts();

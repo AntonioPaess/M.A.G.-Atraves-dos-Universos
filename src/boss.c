@@ -102,7 +102,7 @@ void UpdateBoss(Boss *boss, Vector2 playerPosition, float deltaTime, Bullet **en
                 boss->attackTimer = 0.0f;
                 
                 
-                AddBullet(enemyBullets, boss->position, direction);
+                AddBullet(enemyBullets, boss->position, direction, false);
             }
             break;
             
@@ -124,7 +124,7 @@ void UpdateBoss(Boss *boss, Vector2 playerPosition, float deltaTime, Bullet **en
                 for (int i = 0; i < 8; i++) {
                     float angle = i * (2.0f * PI / 8.0f);
                     Vector2 bulletDir = {cosf(angle), sinf(angle)};
-                    AddBullet(enemyBullets, boss->position, bulletDir);
+                    AddBullet(enemyBullets, boss->position, bulletDir, false);
                 }
             }
             break;
@@ -145,7 +145,7 @@ void UpdateBoss(Boss *boss, Vector2 playerPosition, float deltaTime, Bullet **en
                 for (int i = -1; i <= 1; i++) {
                     float angle = baseAngle + i * (PI / 4.0f);
                     Vector2 bulletDir = {cosf(angle), sinf(angle)};
-                    AddBullet(enemyBullets, boss->position, bulletDir);
+                    AddBullet(enemyBullets, boss->position, bulletDir, false);
                 }
                 
                 
@@ -158,7 +158,7 @@ void UpdateBoss(Boss *boss, Vector2 playerPosition, float deltaTime, Bullet **en
                     for (int i = 0; i < 12; i++) {
                         float angle = i * (2.0f * PI / 12.0f);
                         Vector2 bulletDir = {cosf(angle), sinf(angle)};
-                        AddBullet(enemyBullets, boss->position, bulletDir);
+                        AddBullet(enemyBullets, boss->position, bulletDir, false);
                     }
                 }
             }
@@ -180,7 +180,7 @@ void UpdateBoss(Boss *boss, Vector2 playerPosition, float deltaTime, Bullet **en
                     for (int i = 0; i < 16; i++) {
                         float angle = i * (2.0f * PI / 16.0f);
                         Vector2 bulletDir = {cosf(angle), sinf(angle)};
-                        AddBullet(enemyBullets, boss->position, bulletDir);
+                        AddBullet(enemyBullets, boss->position, bulletDir, false);
                     }
                 }
             } else {
@@ -211,7 +211,7 @@ void UpdateBoss(Boss *boss, Vector2 playerPosition, float deltaTime, Bullet **en
                     for (int i = -2; i <= 2; i++) {
                         float angle = baseAngle + i * (PI / 12.0f);
                         Vector2 bulletDir = {cosf(angle), sinf(angle)};
-                        AddBullet(enemyBullets, boss->position, bulletDir);
+                        AddBullet(enemyBullets, boss->position, bulletDir, false);
                     }
                 }
                 
@@ -248,33 +248,16 @@ bool CheckBossHitByBullet(Boss *boss, Vector2 bulletPosition, float bulletRadius
     if (CheckCollisionCircles(boss->position, boss->radius, bulletPosition, bulletRadius)) {
         boss->layerHealth -= damage;
         
-        
         if (boss->layerHealth <= 0) {
-            boss->currentLayer--;
-            
-            if (boss->currentLayer > 0) {
-                
-                boss->isTransitioning = true;
-                boss->transitionTimer = 0.0f;
-                
-                
-                extern void ShowScreenText(const char* text, Vector2 position, float fontSize, Color color, float duration, bool fadeOut);
-                extern const char* GetBossPhaseText(void);
-                const char* bossPhaseText = GetBossPhaseText();
-                ShowScreenText(bossPhaseText, 
-                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
-                              28, RED, 3.0f, true);
-            } else {
-                
-                boss->active = false;
-                return 4000; 
-            }
+            // Boss foi derrotado completamente
+            boss->active = false;
+            return 4000; // Pontuação por derrotar o boss
         }
         
-        return true; 
+        return true; // Boss foi atingido mas não derrotado
     }
     
-    return false; 
+    return false; // Sem colisão
 }
 
 void LaunchRicochetBullets(Boss *boss, Bullet **enemyBullets) {

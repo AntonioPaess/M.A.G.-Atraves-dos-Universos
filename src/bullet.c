@@ -4,23 +4,32 @@
 #include <stdio.h> 
 #include "raymath.h" 
 
-void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
+void AddBullet(Bullet **head, Vector2 startPosition, Vector2 direction, bool isPlayerBullet) {
     Bullet *newBullet = (Bullet *)malloc(sizeof(Bullet));
-    if (!newBullet) return; 
+    if (!newBullet) return;
 
-    memset(newBullet, 0, sizeof(Bullet));  // Zerar toda a estrutura primeiro
-    
+    memset(newBullet, 0, sizeof(Bullet));
+
     newBullet->position = startPosition;
     
     if (Vector2LengthSqr(direction) > 0) {
         newBullet->velocity = Vector2Scale(Vector2Normalize(direction), BULLET_SPEED);
     } else {
-        
         newBullet->velocity = (Vector2){0, -BULLET_SPEED}; 
     }
-    newBullet->radius = BULLET_RADIUS;
-    newBullet->active = true;  // GARANTIR QUE É true (1), não garbage
-    newBullet->damage = 1;  
+    
+    // Verificar se o jogador tem dano aumentado - APENAS para tiros do jogador
+    extern bool increasedDamage; 
+    
+    if (isPlayerBullet && increasedDamage) {
+        newBullet->radius = BULLET_RADIUS * 1.5f; // Projéteis maiores
+        newBullet->damage = 2; // Dano dobrado
+    } else {
+        newBullet->radius = BULLET_RADIUS;
+        newBullet->damage = 1;
+    }
+    
+    newBullet->active = true;  
     newBullet->next = *head;
     *head = newBullet;
 }
@@ -165,6 +174,54 @@ void AddRicochetBullet(Bullet **head, Vector2 startPosition, Vector2 direction) 
     newBullet->damage = 1;
     newBullet->canRicochet = true;  
     newBullet->ricochetsLeft = 1;   
+    newBullet->next = *head;
+    *head = newBullet;
+}
+
+// Bala penetrante que atravessa inimigos
+void AddPenetratingBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
+    Bullet *newBullet = (Bullet *)malloc(sizeof(Bullet));
+    if (!newBullet) return;
+
+    memset(newBullet, 0, sizeof(Bullet));
+
+    newBullet->position = startPosition;
+    
+    if (Vector2LengthSqr(direction) > 0) {
+        newBullet->velocity = Vector2Scale(Vector2Normalize(direction), BULLET_SPEED * 1.2f);
+    } else {
+        newBullet->velocity = (Vector2){0, -BULLET_SPEED * 1.2f};
+    }
+    
+    newBullet->radius = BULLET_RADIUS * 1.1f;
+    newBullet->active = true;
+    newBullet->damage = 2;  // Dano aumentado
+    // Propriedade especial: Esta bala não é desativada ao atingir inimigos (implementada na lógica de colisão)
+    
+    newBullet->next = *head;
+    *head = newBullet;
+}
+
+// Bala teleguiada que persegue o inimigo mais próximo
+void AddHomingBullet(Bullet **head, Vector2 startPosition, Vector2 direction) {
+    Bullet *newBullet = (Bullet *)malloc(sizeof(Bullet));
+    if (!newBullet) return;
+
+    memset(newBullet, 0, sizeof(Bullet));
+
+    newBullet->position = startPosition;
+    
+    if (Vector2LengthSqr(direction) > 0) {
+        newBullet->velocity = Vector2Scale(Vector2Normalize(direction), BULLET_SPEED * 0.8f);
+    } else {
+        newBullet->velocity = (Vector2){0, -BULLET_SPEED * 0.8f};
+    }
+    
+    newBullet->radius = BULLET_RADIUS;
+    newBullet->active = true;
+    newBullet->damage = 1;
+    // Propriedade especial: Esta bala deve seguir inimigos (implementada na função UpdateBullets)
+    
     newBullet->next = *head;
     *head = newBullet;
 }
