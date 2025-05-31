@@ -345,6 +345,26 @@ void HandleCollisions(Game *game) {
                                 }
                             }
                             
+                            // ✅ NOVO: Tocar som específico baseado no tipo do inimigo
+                            switch(currentEnemy->type) {
+                                case ENEMY_TYPE_NORMAL:
+                                case ENEMY_TYPE_SPEEDER:
+                                    PlayGameSound(game->enemyNormalDeathSound);
+                                    break;
+                                case ENEMY_TYPE_TANK:
+                                    PlayGameSound(game->enemyTankDeathSound);
+                                    break;
+                                case ENEMY_TYPE_EXPLODER:
+                                    PlayGameSound(game->enemyExploderDeathSound);
+                                    break;
+                                case ENEMY_TYPE_SHOOTER:
+                                    PlayGameSound(game->enemyShooterDeathSound);
+                                    break;
+                                default:
+                                    PlayGameSound(game->enemyExplodeSound);
+                                    break;
+                            }
+                            
                             // CORREÇÃO: Primeiro guardar referências necessárias
                             Enemy* toRemove = currentEnemy;
                             Enemy* nextEnemy = currentEnemy->next;
@@ -446,7 +466,8 @@ void HandleCollisions(Game *game) {
                                               30, RED, 3.0f, true);
                                 
                                 
-                                PlayGameSound(game->enemyExplodeSound);
+                                StopMusicStream(game->backgroundMusic);
+                                PlayMusicStream(game->bossMusic);
                             }
                             
                             // Contabilizar para spawn do boss
@@ -712,7 +733,15 @@ void InitGame(Game *game) {
     game->shootCooldown = 0.0f;  
     
     
-    LoadGameAudio(&game->shootSound, &game->enemyExplodeSound, &game->playerExplodeSound, &game->backgroundMusic);
+    // Carregar áudio com todos os sons
+    LoadGameAudio(&game->shootSound, &game->enemyExplodeSound, &game->playerExplodeSound, 
+                 &game->enemyNormalDeathSound, &game->enemyTankDeathSound, 
+                 &game->enemyExploderDeathSound, &game->enemyShooterDeathSound,
+                 &game->dashSound, // Adicione esta linha
+                 &game->backgroundMusic, &game->menuMusic, &game->tutorialMusic, 
+                 &game->pauseMusic, &game->gameOverMusic, &game->nameEntryMusic,
+                 &game->bossMusic,
+                 &game->menuClickSound, &game->powerupDamageSound, &game->powerupHealSound, &game->powerupShieldSound);
 
     
     ShowCursor();
@@ -747,13 +776,104 @@ void InitGame(Game *game) {
     game->currentSortType = SORT_BY_SCORE;
 
     InitNarrativeText();
+
+    // Inicializar variáveis de fade da música
+    game->bossMusicFadeIn = false;
+    game->bossMusicFadeTimer = 0.0f;
 }
 
 void UpdateGame(Game *game, float deltaTime) {
+    static GameState previousState = -1;
+    
+    // Verificar transição de estado
+    if (previousState != game->currentState) {
+        // Interromper qualquer música atual
+        StopMusicStream(game->backgroundMusic);
+        StopMusicStream(game->menuMusic);
+        StopMusicStream(game->tutorialMusic);
+        StopMusicStream(game->pauseMusic);
+        StopMusicStream(game->gameOverMusic);
+        StopMusicStream(game->nameEntryMusic);
+        
+        // Iniciar música para o novo estado
+        switch (game->currentState) {
+            case GAME_STATE_MAIN_MENU:
+                PlayMusicStream(game->menuMusic);
+                break;
+                
+            case GAME_STATE_TUTORIAL:
+                PlayMusicStream(game->tutorialMusic);
+                break;
+                
+            case GAME_STATE_PLAYING:
+                PlayMusicStream(game->backgroundMusic);
+                break;
+                
+            case GAME_STATE_PAUSED:
+                PlayMusicStream(game->pauseMusic);
+                break;
+                
+            case GAME_STATE_GAME_OVER:
+                // Usar a música do menu em vez da música de game over
+                PlayMusicStream(game->menuMusic);  // MODIFICADO: era game->gameOverMusic
+                break;
+                
+            case GAME_STATE_ENTER_NAME:
+            case GAME_STATE_SCOREBOARD:
+                PlayMusicStream(game->nameEntryMusic);
+                break;
+        }
+        
+        previousState = game->currentState;
+    }
+    
+    // Atualizar a música do estado atual
+    switch (game->currentState) {
+        case GAME_STATE_MAIN_MENU:
+            UpdateMusicStream(game->menuMusic);
+            break;
+            
+        case GAME_STATE_TUTORIAL:
+            UpdateMusicStream(game->tutorialMusic);
+            break;
+            
+        case GAME_STATE_PLAYING:
+            // Se o boss estiver ativo, atualizar a música do boss
+            if (game->bossActive && game->boss.active) {
+                UpdateMusicStream(game->bossMusic);
+            } else {
+                UpdateMusicStream(game->backgroundMusic);
+            }
+            break;
+            
+        case GAME_STATE_PAUSED:
+            UpdateMusicStream(game->pauseMusic);
+            break;
+            
+        case GAME_STATE_GAME_OVER:
+            // Usar a música do menu em vez da música de game over
+            UpdateMusicStream(game->menuMusic);  // MODIFICADO: era game->gameOverMusic
+            break;
+            
+        case GAME_STATE_ENTER_NAME:
+        case GAME_STATE_SCOREBOARD:
+            UpdateMusicStream(game->nameEntryMusic);
+            break;
+    }
+    
+    // Resto do código existente do switch case
     switch (game->currentState) {
         case GAME_STATE_MAIN_MENU:
             
             ShowCursor();
+            
+            // Verificar se a música está tocando
+            if (!IsMusicStreamPlaying(game->menuMusic)) {
+                PlayMusicStream(game->menuMusic);
+                printf("Reiniciando música do menu\n");
+            }
+            
+            UpdateMusicStream(game->menuMusic);
             
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) || 
                 IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) || 
@@ -762,7 +882,8 @@ void UpdateGame(Game *game, float deltaTime) {
                 IsKeyPressed(KEY_ENTER) ||
                 GetKeyPressed() != 0) {
                 
-                
+                // Tocar som de clique do menu
+                PlayGameSound(game->menuClickSound);
                 game->currentState = GAME_STATE_TUTORIAL;
             }
             break;
@@ -808,7 +929,7 @@ void UpdateGame(Game *game, float deltaTime) {
             
             
             HandleInput(game, deltaTime);
-            UpdatePlayer(&game->player, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
+            UpdatePlayer(&game->player, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT, game->dashSound);
             UpdateEnemies(&game->enemies, game->player.position, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT, &game->bullets, &game->enemyBullets);
             UpdateBullets(&game->bullets, deltaTime, SCREEN_WIDTH, SCREEN_HEIGHT);
             
@@ -823,25 +944,23 @@ void UpdateGame(Game *game, float deltaTime) {
             
             PowerupType collectedType;
             if (CheckPowerupCollision(&game->powerups, game->player.position, game->player.radius, &collectedType)) {
-                
+                // Tocar som específico para cada tipo de powerup
                 switch (collectedType) {
                     case POWERUP_DAMAGE:
-                        
+                        PlayGameSound(game->powerupDamageSound);
                         game->increasedDamage = true;
-                        
-                        
                         if (game->player.lives > 1) {
                             game->player.lives--;
                         }
                         break;
                         
                     case POWERUP_HEAL:
-                        
+                        PlayGameSound(game->powerupHealSound);
                         game->player.lives = 3;
                         break;
                         
                     case POWERUP_SHIELD:
-                        
+                        PlayGameSound(game->powerupShieldSound);
                         game->player.hasShield = true;
                         game->player.shieldTimer = 15.0f;
                         break;

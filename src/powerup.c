@@ -66,7 +66,7 @@ void ClearPowerups(Powerup **powerups) {
 
 bool CheckPowerupCollision(Powerup **powerups, Vector2 position, float radius, PowerupType *collectedType) {
     Powerup *current = *powerups;
-    Powerup *prev = NULL;
+   
     bool collisionDetected = false;
     
     while (current != NULL) {
@@ -85,7 +85,7 @@ bool CheckPowerupCollision(Powerup **powerups, Vector2 position, float radius, P
             }
         }
         
-        prev = current;
+       
         current = current->next;
     }
     

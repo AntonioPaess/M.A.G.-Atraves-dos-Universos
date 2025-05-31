@@ -30,7 +30,8 @@ void DrawPixelCircleV(Vector2 center, float radius, Color color);
 void DrawPixelText(const char *text, int posX, int posY, int fontSize, Color color);
 void DrawPixelRect(float x, float y, float width, float height, Color color);
 void DrawMinimalistCursor(void);
-void DrawPlayAreaBorder(void);  
+void DrawPlayAreaBorder(void);
+void DrawHUD(long score, int enemyCount, int playerLives);  // Adicionei o número de vidas aqui
 
 
 extern ScoreEntry GetScoreAt(int index);
@@ -59,10 +60,17 @@ void DrawPixelLine(float x1, float y1, float x2, float y2, Color color) {
 
 
 void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *bullets, const Bullet *enemyBullets, const Powerup *powerups, long score) {
+    // Desenhar HUD primeiro - agora passando o número de vidas do jogador
+    DrawHUD(score, enemies->count, player->lives);
     
+    // Usar scissor mode para limitar o desenho da área de jogo
+    float hudHeight = 60.0f;
+    BeginScissorMode(0, hudHeight, GetScreenWidth(), GetScreenHeight() - hudHeight);
+    
+    // Desenhar a área de jogo
     DrawPlayAreaBorder();
     
-    
+    // Desenhar player
     if (player && player->visible) {
         
         static float pulseTime = 0.0f;
@@ -379,7 +387,6 @@ void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *
     DrawPixelText("SCORE", centerX - MeasureText("SCORE", 16)/2, 45, 16, Fade(LIGHTGRAY, 0.6f));
     
     
-    
     if (enemies) {
         
         const char* enemiesText = TextFormat("%d", enemies->count);
@@ -403,48 +410,37 @@ void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *
     }
 
     
+    EndScissorMode();
     
+    // Desenhar barra de dash na parte inferior da tela
     float dashCooldownRatio = player->dashCooldown / DASH_COOLDOWN;
-
-    
     int barWidth = 200;
     int barHeight = 10;
     int barX = GetScreenWidth() / 2 - barWidth / 2;
     int barY = GetScreenHeight() - 30;
     
-    
     Color dashBarColor = RED;
     float alpha = 0.7f + sinf(GetTime() * 4.0f) * 0.3f;
     
-    
     DrawPixelText("DASH", barX, barY - 15, 16, Fade(WHITE, 0.6f));
-    
-    
     DrawPixelRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4, Fade(WHITE, 0.3f));
-    
-    
     DrawPixelRect(barX, barY, barWidth, barHeight, Fade(BLACK, 0.6f));
-    
     
     if (!player->isDashing) {
         int fillWidth = barWidth * (1.0f - dashCooldownRatio);
         DrawPixelRect(barX, barY, fillWidth, barHeight, Fade(dashBarColor, alpha));
         
-        
         if (fillWidth > 0 && fillWidth < barWidth) {
             DrawPixelRect(barX + fillWidth - 3, barY, 6, barHeight, Fade(WHITE, alpha * 0.8f));
         }
     } else {
-        
         DrawPixelRect(barX, barY, barWidth, barHeight, Fade(RED, alpha * 1.5f));
     }
-    
     
     if (dashCooldownRatio <= 0.0f && !player->isDashing) {
         DrawPixelText("READY", barX + barWidth - MeasureText("READY", 14), barY - 15, 14, 
                      Fade(RED, 0.8f + sinf(GetTime() * 5.0f) * 0.2f));
     }
-
     
     DrawMinimalistCursor();
 }
@@ -1023,20 +1019,18 @@ void DrawEnemyDeathAnimation(const Enemy *enemy) {
 
 
 void DrawPlayAreaBorder(void) {
-    
     static float borderAnimTime = 0.0f;
     borderAnimTime += GetFrameTime() * 15.0f; 
     
-    
-    float pointSpacing = 2.0f;
-    
-    
+    float pointSpacing = 1.0f; // Reduzido para criar mais pontos (borda mais densa)
     extern float currentPlayAreaRadius;  
     
+    // Definir a área de HUD (evitar desenhar aqui)
+    float hudHeight = 60.0f;  // Altura da área de score/HUD
     
+    // Desenhar borda principal mais grossa
     for (float angle = 0; angle < 360.0f; angle += pointSpacing) {
         float rad = angle * DEG2RAD;
-        
         
         float waveEffect = sinf((angle + borderAnimTime) * DEG2RAD * 3) * 3.0f;
         float radiusWithEffect = currentPlayAreaRadius + waveEffect;
@@ -1046,7 +1040,12 @@ void DrawPlayAreaBorder(void) {
             PLAY_AREA_CENTER_Y + sinf(rad) * radiusWithEffect
         };
         
+        // Verificar se o ponto está na área de HUD
+        if (pointOnCircle.y < hudHeight) {
+            continue;  // Pular este ponto (não desenhar)
+        }
         
+        // Cores mais vívidas e alternância mais definida
         Color pointColor;
         float segment = fmodf(angle + borderAnimTime, 30.0f); 
         
@@ -1056,25 +1055,25 @@ void DrawPlayAreaBorder(void) {
             pointColor = WHITE;
         }
         
-        
-        float brightness = 0.5f + sinf(borderAnimTime * 0.1f + angle * 0.02f) * 0.5f;
-        
-        
-        DrawPixelCircleV(pointOnCircle, 3.0f, Fade(pointColor, brightness));
+        // Desenhar círculos pequenos em vez de pixels para uma borda mais grossa
+        DrawCircleV(pointOnCircle, 2.5f, pointColor);
     }
     
-    
-    for (int i = 0; i < 8; i++) {
-        float sparkleAngle = borderAnimTime * 0.2f + i * 45.0f;
-        float sparkleRad = sparkleAngle * DEG2RAD;
+    // Adicionar brilho externo para aumentar visibilidade
+    for (float angle = 0; angle < 360.0f; angle += pointSpacing * 3) {
+        float rad = angle * DEG2RAD;
+        float radiusWithEffect = currentPlayAreaRadius + 2.0f;
         
-        Vector2 sparklePos = {
-            PLAY_AREA_CENTER_X + cosf(sparkleRad) * currentPlayAreaRadius,
-            PLAY_AREA_CENTER_Y + sinf(sparkleRad) * currentPlayAreaRadius
+        Vector2 glowPoint = {
+            PLAY_AREA_CENTER_X + cosf(rad) * radiusWithEffect,
+            PLAY_AREA_CENTER_Y + sinf(rad) * radiusWithEffect
         };
         
-        float glow = fabsf(sinf(borderAnimTime * 0.3f + i));
-        DrawPixelCircleV(sparklePos, 5.0f * glow, Fade(WHITE, glow * 0.8f));
+        if (glowPoint.y < hudHeight) continue;
+        
+        Color glowColor = (angle + borderAnimTime) / 30.0f < 0.5f ? 
+                         Fade(RED, 0.4f) : Fade(WHITE, 0.4f);
+        DrawCircleV(glowPoint, 4.0f, glowColor);
     }
 }
 
@@ -1189,6 +1188,82 @@ void DrawTutorialScreen(void) {
 }
 
 
+void DrawHUD(long score, int enemyCount, int playerLives) {
+    // Definir a área do HUD
+    int hudHeight = 60;
+    DrawRectangle(0, 0, GetScreenWidth(), hudHeight, Fade(BLACK, 0.8f));
+    
+    // ===== PONTUAÇÃO =====
+    float centerX = GetScreenWidth() / 2;
+    
+    static long lastScore = 0;
+    static float scoreFlash = 0.0f;
+    
+    if (score > lastScore) {
+        scoreFlash = 1.0f;
+        lastScore = score;
+    }
+    
+    scoreFlash = scoreFlash > 0.0f ? scoreFlash - GetFrameTime() * 2.0f : 0.0f;
+    
+    const char* scoreText = TextFormat("%ld", score);
+    Color scoreColor = WHITE;
+    
+    if (scoreFlash > 0.0f) {
+        scoreColor = Fade(WHITE, 0.7f + scoreFlash * 0.3f); 
+    }
+    
+    DrawPixelText(scoreText, centerX - MeasureText(scoreText, 38)/2, 15, 38, scoreColor);
+    DrawPixelText("SCORE", centerX - MeasureText("SCORE", 16)/2, 45, 16, Fade(LIGHTGRAY, 0.6f));
+    
+    // ===== VIDAS (CORAÇÕES) =====
+    DrawPixelText("LIVES", 20, 24, 30, Fade(WHITE, 0.9f));
+    
+    int livesTextWidth = MeasureText("LIVES", 30);
+    DrawPixelRect(30 + livesTextWidth, 20, 3 * 42 + 10, 28, Fade(WHITE, 0.15f));
+    
+    static float heartPulse = 0.0f;
+    heartPulse += GetFrameTime() * 1.2f;
+    
+    for (int i = 0; i < 3; i++) {
+        float pulse = 0.8f + sinf(heartPulse + i * 0.8f) * 0.2f;
+        
+        // MUDANÇA AQUI: Verifica se este coração deve ser preenchido ou vazio
+        Color lifeColor = i < playerLives ? RED : Fade(RED, 0.3f);
+        
+        float heartX = 50 + livesTextWidth + i * 40; 
+        float heartY = 34; 
+        float heartSize = 9.0f * pulse; 
+        
+        
+        DrawPixelCircle(heartX - heartSize/2, heartY, heartSize, lifeColor);
+        DrawPixelCircle(heartX + heartSize/2, heartY, heartSize, lifeColor);
+        
+        
+        DrawPixelLine(heartX - heartSize, heartY, heartX, heartY + heartSize*1.5, lifeColor);
+        DrawPixelLine(heartX + heartSize, heartY, heartX, heartY + heartSize*1.5, lifeColor);
+        
+        
+        // Brilho central - mais fraco nos corações vazios
+        float glowAlpha = i < playerLives ? 0.7f : 0.3f;
+        DrawPixelCircle(heartX, heartY + heartSize*1.5, 2, Fade(WHITE, glowAlpha * pulse));
+    }
+    
+    // ===== CONTAGEM DE INIMIGOS =====
+    const char* enemiesText = TextFormat("%d", enemyCount);
+    int textWidth = MeasureText(enemiesText, 28);
+    int rightAlign = GetScreenWidth() - 20 - textWidth;
+    
+    DrawPixelText(enemiesText, rightAlign, 20, 28, Fade(WHITE, 0.9f));
+    DrawPixelCircle(rightAlign - 20, 30, 8, Fade(RED, 0.7f)); 
+    DrawPixelText("ENEMIES", GetScreenWidth() - MeasureText("ENEMIES", 16) - 20, 45, 16, Fade(LIGHTGRAY, 0.6f));
+    
+    // Linha separadora na parte inferior
+    for (int x = 0; x < GetScreenWidth(); x += 2) {
+        float brightness = 0.4f + sinf(x * 0.01f) * 0.1f;
+        DrawPixelRect(x, 59, 2, 2, Fade(WHITE, brightness * 0.3f));
+    }
+}
 void DrawGameOverScreen(long finalScore) {
     
     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.9f));
@@ -1248,15 +1323,15 @@ void DrawGameOverScreen(long finalScore) {
 
 
 void DrawPauseMenu(void) {
-    
+    // Desenhar retângulo semi-transparente
     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), Fade(BLACK, 0.7f));
     
-    
+    // Animação de pulsação
     static float animTime = 0.0f;
     animTime += GetFrameTime();
     float pulse = 0.7f + sinf(animTime * 3.0f) * 0.3f;
     
-    
+    // Título
     const char *title = "PAUSA";
     int titleWidth = MeasureText(title, 60);
     DrawText(title, 
@@ -1268,7 +1343,6 @@ void DrawPauseMenu(void) {
     
     int startY = GetScreenHeight()/2;
     int lineHeight = 40;
-    Color textColor = WHITE;
     
     
     const char* resumeText = "PRESSIONE P PARA CONTINUAR";

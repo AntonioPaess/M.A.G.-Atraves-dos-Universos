@@ -35,7 +35,7 @@ extern float PLAY_AREA_BOTTOM;
 
 
 #define PLAY_AREA_CENTER_X (SCREEN_WIDTH / 2.0f)
-#define PLAY_AREA_CENTER_Y (SCREEN_HEIGHT / 2.0f)
+extern float PLAY_AREA_CENTER_Y;  // Declaração de variável global
 #define PLAY_AREA_RADIUS (fminf(SCREEN_WIDTH, SCREEN_HEIGHT) / 2.0f - PLAY_AREA_MARGIN)
 
 
@@ -55,4 +55,4 @@ void InitPlayArea(void);
 
 void UpdateDynamicPlayArea(float deltaTime, float gameScore); 
 
-#endif 
+#endif

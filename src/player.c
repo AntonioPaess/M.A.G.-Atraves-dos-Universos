@@ -2,6 +2,7 @@
 #include "raylib.h" 
 #include "raymath.h" 
 #include <math.h> 
+#include "audio.h"
 
 void InitPlayer(Player *player, int windowWidth, int windowHeight) {
     
@@ -26,7 +27,7 @@ void InitPlayer(Player *player, int windowWidth, int windowHeight) {
     player->dashDirection = (Vector2){0, 0};
 }
 
-void UpdatePlayer(Player *player, float deltaTime, int windowWidth, int windowHeight) {
+void UpdatePlayer(Player *player, float deltaTime, int windowWidth, int windowHeight, Sound dashSound) {
     
     if (player->dashCooldown > 0.0f) {
         player->dashCooldown -= deltaTime;
@@ -56,6 +57,9 @@ void UpdatePlayer(Player *player, float deltaTime, int windowWidth, int windowHe
             player->isDashing = true;
             player->dashTimer = DASH_DURATION;
             player->dashDirection = Vector2Normalize(movement_input);
+            
+            // Tocar o som do dash
+            PlayGameSound(dashSound);
         }
     }
     

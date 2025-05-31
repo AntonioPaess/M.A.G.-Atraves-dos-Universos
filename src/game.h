@@ -35,10 +35,28 @@ typedef struct Game {
     float shootCooldown;  
 
     
+    // Sons básicos
     Sound shootSound;
     Sound enemyExplodeSound;
     Sound playerExplodeSound;
+    Sound enemyNormalDeathSound;
+    Sound enemyTankDeathSound;
+    Sound enemyExploderDeathSound;
+    Sound enemyShooterDeathSound;
+    Sound dashSound;  
+    
     Music backgroundMusic;
+    
+    Music menuMusic;         // Música do menu principal
+    Music tutorialMusic;     // Música da tela de tutorial
+    Music pauseMusic;        // Música da tela de pausa
+    Music gameOverMusic;     // Música de game over
+    Music nameEntryMusic;    // Música da tela de entrada de nome
+    Sound menuClickSound;    // Som ao clicar em opções
+    Sound powerupDamageSound;  // Som do powerup vermelho (dano)
+    Sound powerupHealSound;    // Som do powerup verde (cura)
+    Sound powerupShieldSound;  // Som do powerup azul (escudo)
+    Music bossMusic;        // Música que toca durante a batalha contra o boss
 
     
     int enemiesKilled;
@@ -67,6 +85,10 @@ typedef struct Game {
     bool showGameSummary;    
     SortType currentSortType; 
 
+    // Para fade da música do boss
+    bool bossMusicFadeIn;
+    float bossMusicFadeTimer;
+
 } Game;
 
 
@@ -75,4 +97,4 @@ void ResetGame(Game *game);
 void UpdateGame(Game *game, float deltaTime);
 void DrawGame(Game *game);  
 
-#endif 
+#endif

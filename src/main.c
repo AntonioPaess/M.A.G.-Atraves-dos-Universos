@@ -36,7 +36,15 @@ int main(void) {
     }
 
     
-    UnloadGameAudio(game.shootSound, game.enemyExplodeSound, game.playerExplodeSound, game.backgroundMusic);
+    // Descarregar todos os recursos de áudio
+    UnloadGameAudio(game.shootSound, game.enemyExplodeSound, game.playerExplodeSound,
+                   game.enemyNormalDeathSound, game.enemyTankDeathSound,
+                   game.enemyExploderDeathSound, game.enemyShooterDeathSound, 
+                   game.dashSound, // Adicione esta linha para o som do dash
+                   game.backgroundMusic, game.menuMusic, game.tutorialMusic,
+                   game.pauseMusic, game.gameOverMusic, game.nameEntryMusic,
+                   game.bossMusic,
+                   game.menuClickSound, game.powerupDamageSound, game.powerupHealSound, game.powerupShieldSound);
     CloseAudioDevice(); 
     CloseWindow();      
 
