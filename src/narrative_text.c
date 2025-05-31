@@ -30,7 +30,7 @@ static const char* defaultPhrases[] = {
     "HEXAKRON: Sua imperfeição me ofende.", 
     "GRONKARR: Luz... geometria... meu poder... esvaído?", 
     "COSMOS: Uau! Matou 10 hein... quer um presente otaro?", 
-    "GRONKARR: EITA LAPADA DO KRAI OBJETO GEOMETRICO!", 
+    "OUCH!", 
     "NARRADOR: Um objeto geometrico poderoso se aproxima!", 
     "HEXAKRON: Este não é nem meu verdadeiro poder!", 
     "HEXAKRON: Impossível... Como fui derrotado?!", 

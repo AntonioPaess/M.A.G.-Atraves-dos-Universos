@@ -343,12 +343,6 @@ void HandleInput(Game *game, float deltaTime) {
                     }
                     break;
                     
-                    
-                case BOSS_REWARD_HOMING:
-                    // Tiros teleguiados - corrigido para 4 parâmetros
-                    AddHomingBullet(&game->bullets, game->player.position, direction);
-                    break;
-                    
                 case BOSS_REWARD_QUICANTE:
                     // Tiros que quicam uma vez na parede
                     AddRicochetBullet(&game->bullets, game->player.position, direction);
@@ -448,14 +442,6 @@ void HandleCollisions(Game *game) {
                             
                             
                             
-                            if (game->enemiesKilled % 10 == 0 && game->enemiesKilled > 0) {
-                                const char* milestoneText = GetKillMilestoneText();
-                                ShowScreenText(milestoneText, 
-                                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 50}, 
-                                              25, GOLD, 3.0f, true);
-                            }
-
-                           
                             if (game->enemiesKilled == game->nextPowerupAt) {
                                 
                                 float angle1 = GetRandomValue(0, 360) * DEG2RAD;
@@ -539,11 +525,7 @@ void HandleCollisions(Game *game) {
                                 game->showBossMessage = true;
                                 game->bossMessageTimer = 0.0f;
                                 
-                                // Exibir texto do boss
-                                const char* bossAppearText = GetBossAppearText();
-                                ShowScreenText(bossAppearText, 
-                                              (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
-                                              30, RED, 3.0f, true);
+                                
                                 
                                 // Trocar a música
                                 StopMusicStream(game->backgroundMusic);
@@ -603,7 +585,7 @@ void HandleCollisions(Game *game) {
                         BossRewardType reward = GetRandomValue(1, 4); // Escolhe um power-up aleatório (1-5)
                         game->activeBossReward = reward;
                         game->hasBossReward = true;
-                        game->bossRewardTimer = 10.0f;
+                        game->bossRewardTimer = 30.0f;
                         
                         // Mostrar mensagem sobre o power-up obtido
                         const char* rewardMessage;
@@ -635,11 +617,7 @@ void HandleCollisions(Game *game) {
                                       (Vector2){GetScreenWidth()/2, GetScreenHeight()/2}, 
                                       30, rewardColor, 4.0f, true);
                         
-                        // Texto de derrota do boss (mantenha o que já existe)
-                        const char* bossDefeatText = GetBossDefeatText();
-                        ShowScreenText(bossDefeatText, 
-                                      (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 80}, 
-                                      30, RED, 4.0f, true);
+                       
                           
                         // Trocar música de volta para a normal
                         StopMusicStream(game->bossMusic);
@@ -678,7 +656,7 @@ void HandleCollisions(Game *game) {
                     const char* damageText = GetDamageText();
                     ShowScreenText(damageText, 
                                   (Vector2){game->player.position.x, game->player.position.y - 30}, 
-                                  30, RED, 1.0f, true);
+                                  30, RED, 1.8f, true);
                     
                     if (game->player.lives <= 0) {
                         
@@ -730,7 +708,7 @@ void HandleCollisions(Game *game) {
                     const char* damageText = GetDamageText();
                     ShowScreenText(damageText, 
                                   (Vector2){game->player.position.x, game->player.position.y - 30}, 
-                                  30, RED, 1.0f, true);
+                                  30, RED, 1.8f, true);
                     
                     if (game->player.lives <= 0) {
                         
@@ -803,7 +781,7 @@ void HandleCollisions(Game *game) {
                     const char* damageText = GetDamageText();
                     ShowScreenText(damageText, 
                                   (Vector2){game->player.position.x, game->player.position.y - 30}, 
-                                  30, RED, 1.0f, true);
+                                  30, RED, 1.8f, true);
                     
                     if (game->player.lives <= 0) {
                         
@@ -896,7 +874,7 @@ void InitGame(Game *game) {
     game->showGameSummary = false;
     game->currentSortType = SORT_BY_SCORE;
 
-    InitNarrativeText();
+    
 
     // Inicializar variáveis de fade da música
     game->bossMusicFadeIn = false;
@@ -1027,17 +1005,6 @@ void UpdateGame(Game *game, float deltaTime) {
             
         case GAME_STATE_PLAYING:
             
-            {
-                static GameState previousState = GAME_STATE_MAIN_MENU;
-                if (previousState != GAME_STATE_PLAYING) {
-                    const char* introText = GetIntroText();
-                    ShowScreenText(introText, 
-                                  (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 - 100}, 
-                                  25, WHITE, 5.0f, true);
-                }
-                previousState = game->currentState;
-            }
-            
             
             game->gameTime += deltaTime;
             
@@ -1128,20 +1095,7 @@ void UpdateGame(Game *game, float deltaTime) {
             }
             
             
-            if (GetRandomValue(0, 1800) == 1) { 
-                const char* jokeText = GetRandomJokeText();
-                ShowScreenText(jokeText, 
-                             (Vector2){GetScreenWidth()/2, GetScreenHeight()/2 + 100}, 
-                             22, SKYBLUE, 4.0f, true);
-            }
             
-            
-            if (game->player.lives == 1 && GetRandomValue(0, 600) == 0) { 
-                const char* wisdomText = GetCosmicWisdomText();
-                ShowScreenText(wisdomText, 
-                              (Vector2){GetScreenWidth()/2, 100}, 
-                              24, PURPLE, 5.0f, true);
-            }
             
             // Gerenciar temporizador do power-up do boss
             if (game->hasBossReward) {

@@ -167,7 +167,7 @@ if __name__ == "__main__":
         elif args.tipo == "kill_milestone":
             print("COSMOS: Uau! Matou 10 hein... quer um presente otaro?!")
         elif args.tipo == "damage":
-            print("GRONKARR: EITA LAPADA DO KRAI TIO!")
+            print("ARGH")
         elif args.tipo == "boss_appear":
             print("NARRADOR: Um objeto geometrico poderoso se aproxima!")
         elif args.tipo == "boss_phase":

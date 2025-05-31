@@ -16,27 +16,17 @@ typedef struct {
 } ScreenText;
 
 
-void InitNarrativeText(void);
 
-
-const char* GetIntroText(void);
-
-
-const char* GetKillMilestoneText(void);
 
 
 const char* GetDamageText(void);
 
 
-const char* GetBossAppearText(void);
-const char* GetBossPhaseText(void);
-const char* GetBossDefeatText(void);
 
 
-const char* GetRandomJokeText(void);
 
 
-const char* GetCosmicWisdomText(void);
+
 
 
 void ShowScreenText(const char* text, Vector2 position, float fontSize, Color color, float duration, bool fadeOut);
