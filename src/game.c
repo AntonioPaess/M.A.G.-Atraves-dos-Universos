@@ -300,17 +300,46 @@ void SpawnEnemies(Game *game) {
 void HandleInput(Game *game, float deltaTime) {
     // Atualizar cooldown de tiro
     if (game->shootCooldown > 0) {
-        // Redução normal do cooldown para todos os tipos
         game->shootCooldown -= deltaTime;
     }
     
-    // Atirar enquanto o botão é mantido pressionado
+    // Verificar se há gamepad conectado
+    bool gamepadConnected = IsGamepadAvailable(0);
+    
+    // Direção do tiro
+    Vector2 direction;
+    bool shouldShoot = false;
+    
+    if (gamepadConnected) {
+        // R2 para atirar
+        if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER) > 0.5f && game->shootCooldown <= 0) {
+            shouldShoot = true;
+            
+            // Usar analógico direito (R3) para mira
+            float axisX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_X);
+            float axisY = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_Y);
+            
+            if (fabsf(axisX) > 0.2f || fabsf(axisY) > 0.2f) {
+                // Usar direção do analógico
+                direction = (Vector2){ axisX, axisY };
+                direction = Vector2Normalize(direction);
+            } else {
+                // Se analógico não está sendo usado, atirar para frente
+                direction = (Vector2){ 1, 0 };
+            }
+        }
+    }
+    
+    // Mouse continua funcionando normalmente
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && game->shootCooldown <= 0) {
-        // Obter direção do tiro
+        shouldShoot = true;
         Vector2 mousePos = GetMousePosition();
-        Vector2 direction = Vector2Normalize(Vector2Subtract(mousePos, game->player.position));
-        
-        // Aplicar power-ups de tiro
+        direction = Vector2Normalize(Vector2Subtract(mousePos, game->player.position));
+    }
+    
+    // Realizar o tiro se necessário
+    if (shouldShoot) {
+        // Aplicar power-ups de tiro (manter seu código existente)
         if (game->hasBossReward) {
             switch (game->activeBossReward) {
                 case BOSS_REWARD_DOUBLE_SHOT:
@@ -804,6 +833,26 @@ void HandleCollisions(Game *game) {
     }
 }
 
+// Função para verificar se qualquer botão do gamepad foi pressionado
+bool IsAnyGamepadButtonPressed(void) {
+    if (!IsGamepadAvailable(0)) return false;
+    
+    // Verificar todos os botões possíveis do controle
+    for (int button = 0; button < 15; button++) {
+        if (IsGamepadButtonPressed(0, button)) {
+            return true;
+        }
+    }
+    
+    // Verificar se os gatilhos foram pressionados (são tratados como eixos)
+    if (GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_TRIGGER) > 0.5f ||
+        GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_TRIGGER) > 0.5f) {
+        return true;
+    }
+    
+    return false;
+}
+
 void InitGame(Game *game) {
     
     InitPlayer(&game->player, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -984,19 +1033,21 @@ void UpdateGame(Game *game, float deltaTime) {
                 IsMouseButtonPressed(MOUSE_MIDDLE_BUTTON) || 
                 IsKeyPressed(KEY_SPACE) || 
                 IsKeyPressed(KEY_ENTER) ||
-                GetKeyPressed() != 0) {
-                
-                // Tocar som de clique do menu
-                PlayGameSound(game->menuClickSound);
-                game->currentState = GAME_STATE_TUTORIAL;
-            }
+                GetKeyPressed() != 0 ||
+                IsAnyGamepadButtonPressed()) {  // Adicionado verificação para gamepad
+    
+    // Tocar som de clique do menu
+    PlayGameSound(game->menuClickSound);
+    game->currentState = GAME_STATE_TUTORIAL;
+}
             break;
             
         case GAME_STATE_TUTORIAL:
             
             ShowCursor();
             
-            if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER)) {
+            if (IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_ENTER) || 
+                (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))) {
                 
                 ResetGame(game);
                 game->currentState = GAME_STATE_PLAYING;
@@ -1011,8 +1062,9 @@ void UpdateGame(Game *game, float deltaTime) {
             
             HideCursor();
             
-            
-            if (IsKeyPressed(KEY_P)) {
+            // Verificar se o botão P foi pressionado OU o botão Options do controle
+            if (IsKeyPressed(KEY_P) || 
+                (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT))) {
                 game->currentState = GAME_STATE_PAUSED;
                 break; 
             }
@@ -1118,8 +1170,9 @@ void UpdateGame(Game *game, float deltaTime) {
             
             ShowCursor();
             
-            
-            if (IsKeyPressed(KEY_P)) {
+            // Verificar se o botão P foi pressionado OU o botão Options do controle
+            if (IsKeyPressed(KEY_P) || 
+                (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT))) {
                 game->currentState = GAME_STATE_PLAYING;
             }
             

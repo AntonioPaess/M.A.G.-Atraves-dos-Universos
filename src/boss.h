@@ -7,7 +7,7 @@
 
 
 // Saúde do boss por camada
-#define BOSS_LAYER4_HEALTH 500.0f  
+#define BOSS_LAYER4_HEALTH 300.0f  
 #define BOSS_LAYER3_HEALTH 200.0f  
 #define BOSS_LAYER2_HEALTH 150.0f 
 #define BOSS_LAYER1_HEALTH 120.0f 

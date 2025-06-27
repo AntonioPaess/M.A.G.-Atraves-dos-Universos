@@ -18,7 +18,7 @@ int main(void) {
         float deltaTime = GetFrameTime();
 
         
-        if (IsKeyPressed(KEY_KP_MULTIPLY)) {
+        if (IsKeyPressed(KEY_APOSTROPHE)) {
             AppToggleFullscreen();
         }
 

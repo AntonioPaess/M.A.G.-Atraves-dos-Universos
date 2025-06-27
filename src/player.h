@@ -32,5 +32,6 @@ typedef struct {
 
 void InitPlayer(Player *player, int windowWidth, int windowHeight);
 void UpdatePlayer(Player *player, float deltaTime, int windowWidth, int windowHeight, Sound dashSound);
+void EnsurePlayerInsidePlayArea(Player *player);  // Adicione esta linha
 
 #endif

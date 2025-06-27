@@ -66,9 +66,14 @@ bool IsPointInPlayArea(Vector2 point) {
 
 void InitPlayArea(void) {
     
-    float baseRadius = fminf(SCREEN_WIDTH, SCREEN_HEIGHT) / 2.0f - PLAY_AREA_MARGIN;
-    currentPlayAreaRadius = baseRadius;  
-    targetPlayAreaRadius = baseRadius;   
+    float originalBaseRadius = fminf(SCREEN_WIDTH, SCREEN_HEIGHT) / 2.0f - PLAY_AREA_MARGIN;
+
+   
+    float novoRaioInicial = originalBaseRadius * 0.88f; 
+
+
+    currentPlayAreaRadius = novoRaioInicial;
+    targetPlayAreaRadius = novoRaioInicial; 
     
     
     isAreaShrinking = false;
@@ -108,8 +113,8 @@ void UpdateDynamicPlayArea(float deltaTime, float gameScore) {
             float baseRadius = fminf(SCREEN_WIDTH, SCREEN_HEIGHT) / 2.0f - PLAY_AREA_MARGIN;
             
             // Modificar aqui para limitar a expansão
-            float minRadius = baseRadius * 0.7f;  // Mantido em 70% para contração
-            float maxRadius = baseRadius * 1.00f; // Reduzido para 105% (ou use 1.0f para manter tamanho original)
+            float minRadius = baseRadius * 0.6f;  
+            float maxRadius = baseRadius * 0.88f; 
             
             if (isAreaShrinking) {
                 targetPlayAreaRadius = minRadius;

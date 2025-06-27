@@ -417,7 +417,7 @@ void DrawGameplay(const Player *player, const EnemyList *enemies, const Bullet *
     int barWidth = 200;
     int barHeight = 10;
     int barX = GetScreenWidth() / 2 - barWidth / 2;
-    int barY = GetScreenHeight() - 30;
+    int barY = GetScreenHeight() - 120;
     
     Color dashBarColor = RED;
     float alpha = 0.7f + sinf(GetTime() * 4.0f) * 0.3f;
@@ -506,7 +506,7 @@ void DrawMainMenu(void) {
             Fade(WHITE, 0.8f + sinf(animTime * 4.0f) * 0.2f));
     
     
-    const char *subtitle = "O inimigo agora é outro";
+    const char *subtitle = "Across the Universe";
     int subtitleWidth = MeasureText(subtitle, 30);
     DrawText(subtitle, 
             GetScreenWidth()/2 - subtitleWidth/2, 
@@ -1176,7 +1176,7 @@ void DrawTutorialScreen(void) {
     currentY += lineHeight + sectionSpacing * 2;
     
     
-    const char *startText = "PRESS SPACE TO START GAME";
+    const char *startText = "PRESS SPACE OR X (Controller) TO START GAME";
     DrawText(startText, 
              GetScreenWidth()/2 - MeasureText(startText, 30)/2, 
              currentY, 
@@ -1252,7 +1252,7 @@ void DrawHUD(long score, int enemyCount, int playerLives) {
     // ===== CONTAGEM DE INIMIGOS =====
     const char* enemiesText = TextFormat("%d", enemyCount);
     int textWidth = MeasureText(enemiesText, 28);
-    int rightAlign = GetScreenWidth() - 20 - textWidth;
+    int rightAlign = GetScreenWidth() - 30 - textWidth;
     
     DrawPixelText(enemiesText, rightAlign, 20, 28, Fade(WHITE, 0.9f));
     DrawPixelCircle(rightAlign - 20, 30, 8, Fade(RED, 0.7f)); 
